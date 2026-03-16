@@ -320,11 +320,31 @@ backBtn.addEventListener("mouseleave",()=>backPressed=false)
 
 /* iPhone操作 */
 
-goBtn.addEventListener("touchstart",()=>goPressed=true)
-goBtn.addEventListener("touchend",()=>goPressed=false)
+goBtn.addEventListener("touchstart",(e)=>{
+e.preventDefault()
+goPressed=true
+})
 
-backBtn.addEventListener("touchstart",()=>backPressed=true)
-backBtn.addEventListener("touchend",()=>backPressed=false)
+goBtn.addEventListener("touchend",()=>{
+goPressed=false
+})
+
+goBtn.addEventListener("touchcancel",()=>{
+goPressed=false
+})
+
+backBtn.addEventListener("touchstart",(e)=>{
+e.preventDefault()
+backPressed=true
+})
+
+backBtn.addEventListener("touchend",()=>{
+backPressed=false
+})
+
+backBtn.addEventListener("touchcancel",()=>{
+backPressed=false
+})
 
 
 function gameLoop(){
