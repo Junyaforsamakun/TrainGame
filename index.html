@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
 <title>電車運転ゲーム</title>
 
 <style>
@@ -11,7 +10,6 @@
 body{
 margin:0;
 overflow:hidden;
-background:#87ceeb;
 font-family:sans-serif;
 }
 
@@ -35,10 +33,10 @@ box-sizing:border-box;
 
 #controls button{
 flex:1;
-font-size:28px;
-padding:24px 0;
+font-size:26px;
+padding:22px 0;
 border:none;
-border-radius:16px;
+border-radius:14px;
 color:white;
 touch-action:none;
 }
@@ -98,14 +96,10 @@ function backStart(e){if(e)e.preventDefault();backPressed=true}
 function backEnd(){backPressed=false}
 
 function jumpStart(e){
-
-if(e)e.preventDefault()
-
 if(onGround){
 jumpVelocity=-10
 onGround=false
 }
-
 }
 
 goBtn.addEventListener("touchstart",goStart,{passive:false})
@@ -152,10 +146,10 @@ function createObject(x){
 
 let r=Math.random()
 
-if(r<0.2)return{x,type:"house"}
-if(r<0.4)return{x,type:"building"}
-if(r<0.6)return{x,type:"tree"}
-if(r<0.8)return{x,type:"mountain"}
+if(r<0.25)return{x,type:"tree"}
+if(r<0.5)return{x,type:"house"}
+if(r<0.7)return{x,type:"building"}
+if(r<0.85)return{x,type:"mountain"}
 
 return{x,type:"grave"}
 
@@ -165,37 +159,45 @@ for(let i=0;i<40;i++){
 objects.push(createObject(i*300))
 }
 
-/* 機関車 */
+/* 電車 */
 
 function drawTrain(x,y){
 
 ctx.fillStyle="#222"
-ctx.fillRect(x,y-20,70,20)
 
-ctx.fillStyle="#333"
-ctx.fillRect(x+45,y-40,35,20)
+/* 機関車 */
 
-ctx.fillStyle="#111"
-ctx.fillRect(x+10,y-40,10,15)
+ctx.fillRect(x-70,y-20,70,20)
+ctx.fillRect(x-40,y-40,40,20)
+
+/* 煙突 */
+
+ctx.fillRect(x-60,y-45,10,10)
+
+/* ライト */
 
 ctx.fillStyle="yellow"
 ctx.beginPath()
-ctx.arc(x+70,y-10,4,0,Math.PI*2)
+ctx.arc(x,y-10,4,0,Math.PI*2)
 ctx.fill()
+
+/* 車輪 */
 
 ctx.fillStyle="black"
 
 ctx.beginPath()
-ctx.arc(x+15,y,8,0,Math.PI*2)
-ctx.arc(x+40,y,8,0,Math.PI*2)
-ctx.arc(x+65,y,8,0,Math.PI*2)
+ctx.arc(x-55,y,8,0,Math.PI*2)
+ctx.arc(x-30,y,8,0,Math.PI*2)
+ctx.arc(x-10,y,8,0,Math.PI*2)
 ctx.fill()
+
+/* 客車 */
 
 for(let i=1;i<=3;i++){
 
 let cx=x+i*90
 
-ctx.fillStyle="#1e88e5"
+ctx.fillStyle="#1976d2"
 ctx.fillRect(cx,y-18,65,18)
 
 ctx.fillStyle="white"
@@ -217,43 +219,92 @@ ctx.fill()
 
 /* 背景描画 */
 
+function drawBackground(){
+
+/* 空グラデーション */
+
+let grad=ctx.createLinearGradient(0,0,0,canvas.height)
+grad.addColorStop(0,"#6ec6ff")
+grad.addColorStop(1,"#e3f2fd")
+
+ctx.fillStyle=grad
+ctx.fillRect(0,0,canvas.width,canvas.height)
+
+/* 雲 */
+
+ctx.fillStyle="white"
+
+for(let i=0;i<5;i++){
+
+let x=(i*400-worldX*0.2)%canvas.width
+
+ctx.beginPath()
+ctx.arc(x,80,30,0,Math.PI*2)
+ctx.arc(x+30,80,25,0,Math.PI*2)
+ctx.arc(x+60,80,30,0,Math.PI*2)
+ctx.fill()
+
+}
+
+}
+
+/* 背景オブジェクト */
+
 function drawObject(obj,baseY){
 
 let x=obj.x-worldX
 
 switch(obj.type){
 
-case"house":
-ctx.fillStyle="brown"
-ctx.fillRect(x,baseY-60,40,40)
-break
+case "tree":
 
-case"building":
-ctx.fillStyle="gray"
-ctx.fillRect(x,baseY-100,50,100)
-break
-
-case"tree":
 ctx.fillStyle="green"
 ctx.beginPath()
 ctx.arc(x+10,baseY-40,20,0,Math.PI*2)
 ctx.fill()
+
 ctx.fillStyle="brown"
 ctx.fillRect(x+7,baseY-40,6,40)
+
 break
 
-case"mountain":
-ctx.fillStyle="#556B2F"
+case "house":
+
+ctx.fillStyle="#8d6e63"
+ctx.fillRect(x,baseY-50,40,50)
+
+ctx.fillStyle="#c62828"
+ctx.beginPath()
+ctx.moveTo(x-5,baseY-50)
+ctx.lineTo(x+20,baseY-70)
+ctx.lineTo(x+45,baseY-50)
+ctx.fill()
+
+break
+
+case "building":
+
+ctx.fillStyle="#9e9e9e"
+ctx.fillRect(x,baseY-120,50,120)
+
+break
+
+case "mountain":
+
+ctx.fillStyle="#607d8b"
 ctx.beginPath()
 ctx.moveTo(x-40,baseY)
-ctx.lineTo(x+20,baseY-100)
+ctx.lineTo(x+20,baseY-120)
 ctx.lineTo(x+80,baseY)
 ctx.fill()
+
 break
 
-case"grave":
+case "grave":
+
 ctx.fillStyle="darkgray"
 ctx.fillRect(x,baseY-30,15,30)
+
 break
 
 }
@@ -264,24 +315,21 @@ break
 
 function update(){
 
-if(goPressed)speed+=0.02
-if(backPressed)speed-=0.02
+if(goPressed) speed+=0.03
+if(backPressed) speed-=0.03
 
-speed*=0.995
+/* 摩擦 */
 
-/* 坂による速度変化 */
+speed*=0.99
 
-let currentSegment=segments.find(s=>200>=s.x-worldX && 200<s.x-worldX+300)
+/* 坂の影響 */
 
-if(currentSegment){
+let current=segments.find(s=>200>=s.x-worldX && 200<s.x-worldX+300)
 
-if(currentSegment.type==="uphill"){
-speed*=0.98
-}
+if(current){
 
-if(currentSegment.type==="downhill"){
-speed*=1.02
-}
+if(current.type==="uphill") speed-=0.01
+if(current.type==="downhill") speed+=0.01
 
 }
 
@@ -328,19 +376,19 @@ objects.shift()
 
 function draw(){
 
-ctx.clearRect(0,0,canvas.width,canvas.height)
+drawBackground()
 
 let baseY=canvas.height-220
-
-/* 谷＋橋 */
 
 segments.forEach(seg=>{
 
 let sx=seg.x-worldX
 
+/* 谷＋橋 */
+
 if(seg.type==="bridge"){
 
-ctx.fillStyle="#3a5fcd"
+ctx.fillStyle="#3f51b5"
 ctx.fillRect(sx,baseY+20,300,200)
 
 ctx.strokeStyle="black"
@@ -354,8 +402,6 @@ ctx.stroke()
 }
 
 })
-
-/* 背景 */
 
 objects.forEach(o=>{
 drawObject(o,baseY)
@@ -380,17 +426,13 @@ drawTrain(200,baseY+trainY)
 }
 
 function loop(){
-
 update()
 draw()
-
 requestAnimationFrame(loop)
-
 }
 
 loop()
 
 </script>
-
 </body>
 </html>
