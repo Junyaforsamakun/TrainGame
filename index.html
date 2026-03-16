@@ -19,34 +19,42 @@ canvas{
 display:block;
 }
 
-/* ボタン */
+/* 操作パネル */
 
-button{
+#controls{
 position:absolute;
-bottom:30px;
-padding:28px 55px;
-font-size:30px;
-touch-action:none;
+bottom:10px;
+left:0;
+width:100%;
+display:flex;
+justify-content:space-evenly;
+gap:10px;
+padding:10px;
+box-sizing:border-box;
+}
+
+/* 巨大ボタン */
+
+#controls button{
+flex:1;
+font-size:28px;
+padding:24px 0;
 border:none;
-border-radius:15px;
+border-radius:16px;
+color:white;
+touch-action:none;
 }
 
 #go{
-left:20px;
 background:#4CAF50;
-color:white;
 }
 
 #back{
-left:220px;
 background:#f44336;
-color:white;
 }
 
 #jump{
-right:20px;
 background:#ff9800;
-color:white;
 }
 
 </style>
@@ -56,17 +64,29 @@ color:white;
 
 <canvas id="game"></canvas>
 
+<div id="controls">
 <button id="go">出発</button>
 <button id="back">バック</button>
 <button id="jump">ジャンプ</button>
+</div>
 
 <script>
 
-const canvas = document.getElementById("game")
-const ctx = canvas.getContext("2d")
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
+function resize(){
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
+}
+
+resize()
+
+/* 画面回転対応 */
+
+window.addEventListener("resize",resize)
+
+/* 状態 */
 
 let speed=0
 let worldX=0
@@ -77,6 +97,8 @@ let onGround=true
 
 let goPressed=false
 let backPressed=false
+
+/* ボタン */
 
 const goBtn=document.getElementById("go")
 const backBtn=document.getElementById("back")
@@ -121,7 +143,7 @@ backBtn.addEventListener("mouseup",backEnd)
 
 jumpBtn.addEventListener("mousedown",jumpStart)
 
-/* 世界 */
+/* 地形 */
 
 let segments=[]
 
@@ -129,12 +151,14 @@ function createSegment(x){
 
 let r=Math.random()
 
-if(r<0.6) return {x,type:"flat"}
-if(r<0.8) return {x,type:"hill"}
+if(r<0.6)return {x,type:"flat"}
+if(r<0.8)return {x,type:"hill"}
 
 return {x,type:"tunnel"}
 
 }
+
+/* 初期地形 */
 
 for(let i=0;i<30;i++){
 segments.push(createSegment(i*300))
@@ -184,13 +208,8 @@ ctx.fill()
 
 function update(){
 
-if(goPressed){
-speed+=0.02
-}
-
-if(backPressed){
-speed-=0.02
-}
+if(goPressed)speed+=0.02
+if(backPressed)speed-=0.02
 
 speed*=0.995
 
@@ -215,7 +234,9 @@ if(last.x-worldX<canvas.width+500){
 segments.push(createSegment(last.x+300))
 }
 
-if(segments[0].x-worldX<-500){
+/* 古い地形削除 */
+
+if(segments.length>0 && segments[0].x-worldX<-500){
 segments.shift()
 }
 
@@ -227,7 +248,12 @@ function draw(){
 
 ctx.clearRect(0,0,canvas.width,canvas.height)
 
-let baseY=canvas.height-120
+let baseY=canvas.height-140
+
+/* 空 */
+
+ctx.fillStyle="#87ceeb"
+ctx.fillRect(0,0,canvas.width,canvas.height)
 
 /* 地形 */
 
@@ -235,7 +261,7 @@ segments.forEach(seg=>{
 
 let sx=seg.x-worldX
 
-if(seg.type=="hill"){
+if(seg.type==="hill"){
 
 ctx.fillStyle="#3e8e41"
 
@@ -247,7 +273,7 @@ ctx.fill()
 
 }
 
-if(seg.type=="tunnel"){
+if(seg.type==="tunnel"){
 
 ctx.fillStyle="#555"
 ctx.fillRect(sx+80,baseY-120,140,120)
@@ -287,6 +313,8 @@ ctx.stroke()
 drawTrain(200,baseY+trainY)
 
 }
+
+/* メインループ */
 
 function loop(){
 
