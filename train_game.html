@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>電車運転ゲーム</title>
+
+<style>
+
+body{
+margin:0;
+overflow:hidden;
+background:#87CEEB;
+font-family:sans-serif;
+}
+
+#game{
+position:relative;
+width:100vw;
+height:100vh;
+overflow:hidden;
+}
+
+/* ワールド */
+
+#world{
+position:absolute;
+height:100%;
+width:6000px;
+}
+
+/* 地面 */
+
+#ground{
+position:absolute;
+bottom:0;
+height:120px;
+width:100%;
+background:#6aa84f;
+}
+
+/* 線路 */
+
+#rail{
+position:absolute;
+bottom:120px;
+height:8px;
+width:100%;
+background:#444;
+}
+
+/* 列車 */
+
+#train{
+position:absolute;
+bottom:135px;
+left:50%;
+transform:translateX(-50%);
+display:flex;
+align-items:flex-end;
+gap:6px;
+z-index:10;
+}
+
+/* 機関車 */
+
+.locomotive{
+width:120px;
+height:60px;
+background:#c0392b;
+border-radius:10px;
+position:relative;
+}
+
+/* 客車 */
+
+.car{
+width:100px;
+height:50px;
+background:#2980b9;
+border-radius:8px;
+position:relative;
+}
+
+/* 窓 */
+
+.window{
+width:18px;
+height:14px;
+background:#ecf0f1;
+position:absolute;
+top:10px;
+border-radius:2px;
+}
+
+/* 車輪 */
+
+.wheel{
+width:14px;
+height:14px;
+background:#222;
+border-radius:50%;
+position:absolute;
+bottom:-8px;
+}
+
+/* スピードメーター */
+
+#speedMeter{
+position:absolute;
+top:20px;
+left:20px;
+background:black;
+color:#0f0;
+padding:10px 20px;
+font-size:24px;
+border-radius:8px;
+}
+
+/* 路線マップ */
+
+#map{
+position:absolute;
+top:20px;
+right:20px;
+width:300px;
+height:60px;
+background:white;
+border-radius:10px;
+overflow:hidden;
+}
+
+#mapLine{
+position:absolute;
+top:30px;
+left:0;
+height:4px;
+width:2000px;
+background:black;
+}
+
+#mapTrain{
+position:absolute;
+top:22px;
+width:16px;
+height:16px;
+background:red;
+border-radius:50%;
+}
+
+/* 背景建物 */
+
+.building{
+position:absolute;
+bottom:120px;
+width:120px;
+background:#999;
+}
+
+/* 山 */
+
+.mountain{
+position:absolute;
+bottom:120px;
+width:0;
+height:0;
+border-left:120px solid transparent;
+border-right:120px solid transparent;
+border-bottom:200px solid #556B2F;
+}
+
+/* ボタン */
+
+button{
+position:absolute;
+bottom:20px;
+padding:18px 40px;
+font-size:22px;
+}
+
+#back{
+left:20px;
+}
+
+#go{
+right:20px;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div id="game">
+
+<div id="world">
+
+<div id="rail"></div>
+<div id="ground"></div>
+
+</div>
+
+<!-- 列車 -->
+<div id="train">
+
+<div class="locomotive">
+
+<div class="window" style="left:15px"></div>
+
+<div class="wheel" style="left:20px"></div>
+<div class="wheel" style="left:80px"></div>
+
+</div>
+
+<div class="car">
+
+<div class="window" style="left:10px"></div>
+<div class="window" style="left:35px"></div>
+<div class="window" style="left:60px"></div>
+
+<div class="wheel" style="left:20px"></div>
+<div class="wheel" style="left:70px"></div>
+
+</div>
+
+<div class="car">
+
+<div class="window" style="left:10px"></div>
+<div class="window" style="left:35px"></div>
+<div class="window" style="left:60px"></div>
+
+<div class="wheel" style="left:20px"></div>
+<div class="wheel" style="left:70px"></div>
+
+</div>
+
+<div class="car">
+
+<div class="window" style="left:10px"></div>
+<div class="window" style="left:35px"></div>
+<div class="window" style="left:60px"></div>
+
+<div class="wheel" style="left:20px"></div>
+<div class="wheel" style="left:70px"></div>
+
+</div>
+
+</div>
+
+
+<div id="speedMeter">0 km/h</div>
+
+<div id="map">
+<div id="mapLine"></div>
+<div id="mapTrain"></div>
+</div>
+
+<button id="back">バック</button>
+<button id="go">出発</button>
+
+</div>
+
+
+<script>
+
+const world=document.getElementById("world")
+const speedMeter=document.getElementById("speedMeter")
+const mapTrain=document.getElementById("mapTrain")
+
+let worldX=0
+let speed=0
+
+const accel=0.15
+const friction=0.97
+
+let goPressed=false
+let backPressed=false
+
+
+/* 背景生成 */
+
+for(let i=0;i<50;i++){
+
+let b=document.createElement("div")
+b.className="building"
+
+b.style.left=(i*300+200)+"px"
+b.style.height=(100+Math.random()*200)+"px"
+
+world.appendChild(b)
+
+}
+
+for(let i=0;i<20;i++){
+
+let m=document.createElement("div")
+m.className="mountain"
+
+m.style.left=(i*600)+"px"
+
+world.appendChild(m)
+
+}
+
+
+/* ボタン */
+
+document.getElementById("go").onmousedown=()=>goPressed=true
+document.getElementById("go").onmouseup=()=>goPressed=false
+document.getElementById("go").onmouseleave=()=>goPressed=false
+
+document.getElementById("back").onmousedown=()=>backPressed=true
+document.getElementById("back").onmouseup=()=>backPressed=false
+document.getElementById("back").onmouseleave=()=>backPressed=false
+
+
+function gameLoop(){
+
+if(goPressed){
+speed+=accel
+}
+
+if(backPressed){
+speed-=accel
+}
+
+speed*=friction
+
+worldX-=speed*5
+
+world.style.transform="translateX("+worldX+"px)"
+
+
+let kmh=Math.abs(speed*120).toFixed(0)
+
+speedMeter.innerHTML=kmh+" km/h"
+
+
+mapTrain.style.left=(-worldX/20)+"px"
+
+
+requestAnimationFrame(gameLoop)
+
+}
+
+gameLoop()
+
+</script>
+
+</body>
+</html>
