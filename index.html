@@ -11,6 +11,7 @@ body{
 margin:0;
 overflow:hidden;
 font-family:sans-serif;
+background:black;
 }
 
 canvas{
@@ -19,17 +20,17 @@ display:block;
 
 #controls{
 position:absolute;
-bottom:10px;
+bottom:0;
 width:100%;
 display:flex;
-gap:10px;
+gap:8px;
 padding:10px;
 box-sizing:border-box;
 }
 
 #controls button{
 flex:1;
-font-size:22px;
+font-size:18px;
 padding:20px;
 border:none;
 border-radius:10px;
@@ -37,7 +38,7 @@ color:white;
 }
 
 #go{background:#4CAF50}
-#back{background:#f44336}
+#back{background:#e53935}
 #jump{background:#ff9800}
 #beam{background:#00e5ff}
 
@@ -68,8 +69,8 @@ canvas.height=window.innerHeight
 resize()
 window.addEventListener("resize",resize)
 
-let speed=0
 let worldX=0
+let speed=0
 
 let go=false
 let back=false
@@ -82,7 +83,7 @@ let beams=[]
 let ghosts=[]
 let stations=[]
 
-let baseHeight=canvas.height-200
+let baseHeight=canvas.height-220
 
 document.getElementById("go").ontouchstart=()=>go=true
 document.getElementById("go").ontouchend=()=>go=false
@@ -104,8 +105,6 @@ onGround=false
 document.getElementById("beam").onclick=()=>{
 beams.push({x:worldX+200,life:40})
 }
-
-/* セグメント */
 
 let segments=[{x:0,height:baseHeight,type:"flat"}]
 
@@ -135,8 +134,6 @@ segments.push(createSegment(i*300,prev.height))
 
 }
 
-/* 線路高さ取得 */
-
 function getTrackHeight(pos){
 
 for(let i=0;i<segments.length-1;i++){
@@ -157,23 +154,74 @@ return baseHeight
 
 }
 
-/* 背景 */
+function getTrackAngle(pos){
+
+for(let i=0;i<segments.length-1;i++){
+
+let s1=segments[i]
+let s2=segments[i+1]
+
+if(pos>=s1.x && pos<=s2.x){
+
+return Math.atan2(s2.height-s1.height,s2.x-s1.x)
+
+}
+
+}
+
+return 0
+
+}
+
+/* ハロウィン空 */
 
 function drawSky(){
 
 let g=ctx.createLinearGradient(0,0,0,canvas.height)
 
 g.addColorStop(0,"#ff7b00")
-g.addColorStop(0.5,"#ff2e63")
+g.addColorStop(0.4,"#ff2e63")
 g.addColorStop(1,"#2b0a3d")
 
 ctx.fillStyle=g
 ctx.fillRect(0,0,canvas.width,canvas.height)
 
+/* 月 */
+
 ctx.fillStyle="#fff8b0"
+
 ctx.beginPath()
-ctx.arc(canvas.width-100,100,40,0,Math.PI*2)
+ctx.arc(canvas.width-120,120,40,0,Math.PI*2)
 ctx.fill()
+
+/* コウモリ */
+
+ctx.fillStyle="black"
+
+for(let i=0;i<5;i++){
+
+let x=(i*300-worldX*0.2)%canvas.width
+let y=120+Math.sin(worldX*0.01+i)*30
+
+ctx.beginPath()
+ctx.moveTo(x,y)
+ctx.lineTo(x+10,y-6)
+ctx.lineTo(x+20,y)
+ctx.lineTo(x+10,y+6)
+ctx.fill()
+
+}
+
+/* 霧 */
+
+ctx.fillStyle="rgba(255,255,255,0.08)"
+
+for(let i=0;i<6;i++){
+
+let x=(i*250-worldX*0.5)%canvas.width
+ctx.fillRect(x,canvas.height-200,200,80)
+
+}
 
 }
 
@@ -208,7 +256,6 @@ ctx.fillStyle="#1a1a2e"
 ctx.fillRect(x1,y+10,x2-x1,200)
 
 ctx.strokeStyle="#999"
-ctx.lineWidth=3
 
 for(let x=x1;x<x2;x+=40){
 
@@ -243,35 +290,36 @@ ctx.fill()
 
 /* 電車 */
 
-function drawTrain(x,y){
+function drawTrain(){
 
 ctx.fillStyle="#222"
-ctx.fillRect(x-70,y-20,70,20)
-ctx.fillRect(x-40,y-40,40,20)
+
+ctx.fillRect(-70,-20,70,20)
+ctx.fillRect(-40,-40,40,20)
 
 ctx.fillStyle="yellow"
+
 ctx.beginPath()
-ctx.arc(x,y-10,4,0,Math.PI*2)
+ctx.arc(0,-10,4,0,Math.PI*2)
 ctx.fill()
 
 ctx.fillStyle="black"
 
 ctx.beginPath()
-ctx.arc(x-50,y,8,0,Math.PI*2)
-ctx.arc(x-20,y,8,0,Math.PI*2)
+ctx.arc(-50,0,8,0,Math.PI*2)
+ctx.arc(-20,0,8,0,Math.PI*2)
 ctx.fill()
 
 for(let i=1;i<=3;i++){
 
-let cx=x+i*80
+let cx=i*80
 
 ctx.fillStyle="#1976d2"
-ctx.fillRect(cx,y-18,60,18)
+ctx.fillRect(cx,-18,60,18)
 
-ctx.fillStyle="black"
 ctx.beginPath()
-ctx.arc(cx+10,y,8,0,Math.PI*2)
-ctx.arc(cx+45,y,8,0,Math.PI*2)
+ctx.arc(cx+10,0,8,0,Math.PI*2)
+ctx.arc(cx+45,0,8,0,Math.PI*2)
 ctx.fill()
 
 }
@@ -335,8 +383,6 @@ ctx.stroke()
 
 }
 
-/* 更新 */
-
 function update(){
 
 if(go)speed+=0.03
@@ -366,8 +412,6 @@ y:baseHeight
 
 ghosts.forEach(g=>g.x-=2)
 
-ghosts=ghosts.filter(g=>g.x-worldX>-100)
-
 if(Math.random()<0.003){
 
 stations.push({x:worldX+canvas.width+500})
@@ -378,8 +422,6 @@ beams.forEach(b=>b.life--)
 beams=beams.filter(b=>b.life>0)
 
 }
-
-/* 描画 */
 
 function draw(){
 
@@ -401,19 +443,23 @@ if(s.type==="tunnel")drawTunnel((x1+x2)/2,s.height)
 })
 
 ghosts.forEach(drawGhost)
-
 stations.forEach(drawStation)
 
 let trainPos=worldX+200
 let trackY=getTrackHeight(trainPos)
+let angle=getTrackAngle(trainPos)
 
-drawTrain(200,trackY+trainY)
+ctx.save()
+ctx.translate(200,trackY+trainY)
+ctx.rotate(angle)
+
+drawTrain()
+
+ctx.restore()
 
 drawBeams()
 
 }
-
-/* ループ */
 
 function loop(){
 
