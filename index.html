@@ -2,6 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+
+<!-- iPhone対応 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
 <title>電車運転ゲーム</title>
 
 <style>
@@ -9,163 +13,13 @@
 body{
 margin:0;
 overflow:hidden;
-background:#87CEEB;
+background:#87ceeb;
 font-family:sans-serif;
 }
 
-#game{
-position:relative;
-width:100vw;
-height:100vh;
-overflow:hidden;
-}
-
-/* ワールド */
-
-#world{
-position:absolute;
-height:100%;
-width:6000px;
-}
-
-/* 地面 */
-
-#ground{
-position:absolute;
-bottom:0;
-height:120px;
-width:100%;
-background:#6aa84f;
-}
-
-/* 線路 */
-
-#rail{
-position:absolute;
-bottom:120px;
-height:8px;
-width:100%;
-background:#444;
-}
-
-/* 列車 */
-
-#train{
-position:absolute;
-bottom:135px;
-left:50%;
-transform:translateX(-50%);
-display:flex;
-align-items:flex-end;
-gap:6px;
-z-index:10;
-}
-
-/* 機関車 */
-
-.locomotive{
-width:120px;
-height:60px;
-background:#c0392b;
-border-radius:10px;
-position:relative;
-}
-
-/* 客車 */
-
-.car{
-width:100px;
-height:50px;
-background:#2980b9;
-border-radius:8px;
-position:relative;
-}
-
-/* 窓 */
-
-.window{
-width:18px;
-height:14px;
-background:#ecf0f1;
-position:absolute;
-top:10px;
-border-radius:2px;
-}
-
-/* 車輪 */
-
-.wheel{
-width:14px;
-height:14px;
-background:#222;
-border-radius:50%;
-position:absolute;
-bottom:-8px;
-}
-
-/* スピードメーター */
-
-#speedMeter{
-position:absolute;
-top:20px;
-left:20px;
-background:black;
-color:#0f0;
-padding:10px 20px;
-font-size:24px;
-border-radius:8px;
-}
-
-/* 路線マップ */
-
-#map{
-position:absolute;
-top:20px;
-right:20px;
-width:300px;
-height:60px;
-background:white;
-border-radius:10px;
-overflow:hidden;
-}
-
-#mapLine{
-position:absolute;
-top:30px;
-left:0;
-height:4px;
-width:2000px;
-background:black;
-}
-
-#mapTrain{
-position:absolute;
-top:22px;
-width:16px;
-height:16px;
-background:red;
-border-radius:50%;
-}
-
-/* 背景建物 */
-
-.building{
-position:absolute;
-bottom:120px;
-width:120px;
-background:#999;
-}
-
-/* 山 */
-
-.mountain{
-position:absolute;
-bottom:120px;
-width:0;
-height:0;
-border-left:120px solid transparent;
-border-right:120px solid transparent;
-border-bottom:200px solid #556B2F;
+canvas{
+display:block;
+background:#87ceeb;
 }
 
 /* ボタン */
@@ -173,143 +27,56 @@ border-bottom:200px solid #556B2F;
 button{
 position:absolute;
 bottom:20px;
-padding:18px 40px;
-font-size:22px;
-}
-
-#back{
-left:20px;
+padding:20px 45px;
+font-size:24px;
+touch-action:none;
+border:none;
+border-radius:12px;
 }
 
 #go{
+left:20px;
+background:#4CAF50;
+color:white;
+}
+
+#back{
 right:20px;
+background:#f44336;
+color:white;
 }
 
 </style>
 </head>
 
-
 <body>
 
-<div id="game">
+<canvas id="game"></canvas>
 
-<div id="world">
-
-<div id="rail"></div>
-<div id="ground"></div>
-
-</div>
-
-<!-- 列車 -->
-<div id="train">
-
-<div class="locomotive">
-
-<div class="window" style="left:15px"></div>
-
-<div class="wheel" style="left:20px"></div>
-<div class="wheel" style="left:80px"></div>
-
-</div>
-
-<div class="car">
-
-<div class="window" style="left:10px"></div>
-<div class="window" style="left:35px"></div>
-<div class="window" style="left:60px"></div>
-
-<div class="wheel" style="left:20px"></div>
-<div class="wheel" style="left:70px"></div>
-
-</div>
-
-<div class="car">
-
-<div class="window" style="left:10px"></div>
-<div class="window" style="left:35px"></div>
-<div class="window" style="left:60px"></div>
-
-<div class="wheel" style="left:20px"></div>
-<div class="wheel" style="left:70px"></div>
-
-</div>
-
-<div class="car">
-
-<div class="window" style="left:10px"></div>
-<div class="window" style="left:35px"></div>
-<div class="window" style="left:60px"></div>
-
-<div class="wheel" style="left:20px"></div>
-<div class="wheel" style="left:70px"></div>
-
-</div>
-
-</div>
-
-
-<div id="speedMeter">0 km/h</div>
-
-<div id="map">
-<div id="mapLine"></div>
-<div id="mapTrain"></div>
-</div>
-
-<button id="back">バック</button>
 <button id="go">出発</button>
-
-</div>
-
+<button id="back">バック</button>
 
 <script>
 
-const world=document.getElementById("world")
-const speedMeter=document.getElementById("speedMeter")
-const mapTrain=document.getElementById("mapTrain")
+const canvas = document.getElementById("game")
+const ctx = canvas.getContext("2d")
 
-let worldX=0
-let speed=0
+canvas.width = window.innerWidth
+canvas.height = window.innerHeight
 
-const accel=0.15
-const friction=0.97
+let trainX = 100
+let speed = 0
 
-let goPressed=false
-let backPressed=false
-
-
-/* 背景生成 */
-
-for(let i=0;i<50;i++){
-
-let b=document.createElement("div")
-b.className="building"
-
-b.style.left=(i*300+200)+"px"
-b.style.height=(100+Math.random()*200)+"px"
-
-world.appendChild(b)
-
-}
-
-for(let i=0;i<20;i++){
-
-let m=document.createElement("div")
-m.className="mountain"
-
-m.style.left=(i*600)+"px"
-
-world.appendChild(m)
-
-}
-
-
-/* ボタン */
+let goPressed = false
+let backPressed = false
 
 const goBtn = document.getElementById("go")
 const backBtn = document.getElementById("back")
 
+/* ---------- 操作 ---------- */
+
 function goStart(e){
-e.preventDefault()
+if(e)e.preventDefault()
 goPressed = true
 }
 
@@ -318,7 +85,7 @@ goPressed = false
 }
 
 function backStart(e){
-e.preventDefault()
+if(e)e.preventDefault()
 backPressed = true
 }
 
@@ -327,54 +94,152 @@ backPressed = false
 }
 
 /* iPhone */
-goBtn.addEventListener("touchstart", goStart, {passive:false})
-goBtn.addEventListener("touchend", goEnd)
-goBtn.addEventListener("touchcancel", goEnd)
 
-backBtn.addEventListener("touchstart", backStart, {passive:false})
-backBtn.addEventListener("touchend", backEnd)
-backBtn.addEventListener("touchcancel", backEnd)
+goBtn.addEventListener("touchstart",goStart,{passive:false})
+goBtn.addEventListener("touchend",goEnd)
+goBtn.addEventListener("touchcancel",goEnd)
+
+backBtn.addEventListener("touchstart",backStart,{passive:false})
+backBtn.addEventListener("touchend",backEnd)
+backBtn.addEventListener("touchcancel",backEnd)
 
 /* PC */
-goBtn.addEventListener("mousedown", goStart)
-goBtn.addEventListener("mouseup", goEnd)
-goBtn.addEventListener("mouseleave", goEnd)
 
-backBtn.addEventListener("mousedown", backStart)
-backBtn.addEventListener("mouseup", backEnd)
-backBtn.addEventListener("mouseleave", backEnd)
+goBtn.addEventListener("mousedown",goStart)
+goBtn.addEventListener("mouseup",goEnd)
+goBtn.addEventListener("mouseleave",goEnd)
 
+backBtn.addEventListener("mousedown",backStart)
+backBtn.addEventListener("mouseup",backEnd)
+backBtn.addEventListener("mouseleave",backEnd)
 
-function gameLoop(){
+/* ---------- 電車描画 ---------- */
+
+function drawTrain(x,y){
+
+/* 機関車 */
+
+ctx.fillStyle="black"
+ctx.fillRect(x,y-20,80,20)
+
+ctx.fillRect(x+10,y-40,40,20)
+
+/* 煙突 */
+
+ctx.fillRect(x+55,y-50,10,10)
+
+/* 車輪 */
+
+ctx.beginPath()
+ctx.arc(x+20,y,10,0,Math.PI*2)
+ctx.arc(x+60,y,10,0,Math.PI*2)
+ctx.fill()
+
+/* 客車 */
+
+for(let i=1;i<=3;i++){
+
+let cx = x + i*100
+
+ctx.fillStyle="blue"
+ctx.fillRect(cx,y-20,80,20)
+
+/* 窓 */
+
+ctx.fillStyle="white"
+
+for(let w=0;w<3;w++){
+
+ctx.fillRect(cx+10+w*20,y-15,10,10)
+
+}
+
+/* 車輪 */
+
+ctx.fillStyle="black"
+
+ctx.beginPath()
+ctx.arc(cx+20,y,10,0,Math.PI*2)
+ctx.arc(cx+60,y,10,0,Math.PI*2)
+ctx.fill()
+
+}
+
+}
+
+/* ---------- 更新 ---------- */
+
+function update(){
 
 if(goPressed){
-speed+=accel
+speed += 0.05
 }
 
 if(backPressed){
-speed-=accel
+speed -= 0.05
 }
 
-speed*=friction
+/* 摩擦 */
 
-worldX-=speed*5
+speed *= 0.99
 
-world.style.transform="translateX("+worldX+"px)"
-
-
-let kmh=Math.abs(speed*120).toFixed(0)
-
-speedMeter.innerHTML=kmh+" km/h"
-
-
-mapTrain.style.left=(-worldX/20)+"px"
-
-
-requestAnimationFrame(gameLoop)
+trainX += speed
 
 }
 
-gameLoop()
+/* ---------- 描画 ---------- */
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+/* 地面 */
+
+ctx.fillStyle="#4CAF50"
+ctx.fillRect(0,canvas.height-100,canvas.width,100)
+
+/* 線路 */
+
+ctx.strokeStyle="brown"
+ctx.lineWidth=4
+
+for(let i=0;i<canvas.width;i+=40){
+
+ctx.beginPath()
+ctx.moveTo(i,canvas.height-60)
+ctx.lineTo(i+20,canvas.height-60)
+ctx.stroke()
+
+}
+
+/* レール */
+
+ctx.beginPath()
+ctx.moveTo(0,canvas.height-70)
+ctx.lineTo(canvas.width,canvas.height-70)
+ctx.stroke()
+
+ctx.beginPath()
+ctx.moveTo(0,canvas.height-50)
+ctx.lineTo(canvas.width,canvas.height-50)
+ctx.stroke()
+
+drawTrain(trainX,canvas.height-70)
+
+}
+
+/* ---------- ループ ---------- */
+
+function loop(){
+
+update()
+draw()
+
+requestAnimationFrame(loop)
+
+}
+
+loop()
 
 </script>
 
