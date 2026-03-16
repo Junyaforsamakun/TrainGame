@@ -45,17 +45,9 @@ color:white;
 touch-action:none;
 }
 
-#go{
-background:#4CAF50;
-}
-
-#back{
-background:#f44336;
-}
-
-#jump{
-background:#ff9800;
-}
+#go{background:#4CAF50;}
+#back{background:#f44336;}
+#jump{background:#ff9800;}
 
 </style>
 </head>
@@ -81,9 +73,6 @@ canvas.height=window.innerHeight
 }
 
 resize()
-
-/* 画面回転対応 */
-
 window.addEventListener("resize",resize)
 
 /* 状態 */
@@ -104,8 +93,6 @@ const goBtn=document.getElementById("go")
 const backBtn=document.getElementById("back")
 const jumpBtn=document.getElementById("jump")
 
-/* 操作 */
-
 function goStart(e){if(e)e.preventDefault();goPressed=true}
 function goEnd(){goPressed=false}
 
@@ -117,7 +104,7 @@ function jumpStart(e){
 if(e)e.preventDefault()
 
 if(onGround){
-jumpVelocity=-12
+jumpVelocity=-10
 onGround=false
 }
 
@@ -158,46 +145,44 @@ return {x,type:"tunnel"}
 
 }
 
-/* 初期地形 */
-
 for(let i=0;i<30;i++){
 segments.push(createSegment(i*300))
 }
 
-/* 電車 */
+/* 電車（少し小型化） */
 
 function drawTrain(x,y){
 
 ctx.fillStyle="black"
-ctx.fillRect(x,y-20,80,20)
+ctx.fillRect(x,y-15,60,15)
 
-ctx.fillRect(x+10,y-40,40,20)
+ctx.fillRect(x+8,y-30,30,15)
 
-ctx.fillRect(x+55,y-50,10,10)
+ctx.fillRect(x+40,y-35,8,8)
 
 ctx.beginPath()
-ctx.arc(x+20,y,10,0,Math.PI*2)
-ctx.arc(x+60,y,10,0,Math.PI*2)
+ctx.arc(x+15,y,8,0,Math.PI*2)
+ctx.arc(x+45,y,8,0,Math.PI*2)
 ctx.fill()
 
 for(let i=1;i<=3;i++){
 
-let cx=x+i*100
+let cx=x+i*80
 
 ctx.fillStyle="blue"
-ctx.fillRect(cx,y-20,80,20)
+ctx.fillRect(cx,y-15,60,15)
 
 ctx.fillStyle="white"
 
 for(let w=0;w<3;w++){
-ctx.fillRect(cx+10+w*20,y-15,10,10)
+ctx.fillRect(cx+8+w*16,y-12,8,8)
 }
 
 ctx.fillStyle="black"
 
 ctx.beginPath()
-ctx.arc(cx+20,y,10,0,Math.PI*2)
-ctx.arc(cx+60,y,10,0,Math.PI*2)
+ctx.arc(cx+15,y,8,0,Math.PI*2)
+ctx.arc(cx+45,y,8,0,Math.PI*2)
 ctx.fill()
 
 }
@@ -234,8 +219,6 @@ if(last.x-worldX<canvas.width+500){
 segments.push(createSegment(last.x+300))
 }
 
-/* 古い地形削除 */
-
 if(segments.length>0 && segments[0].x-worldX<-500){
 segments.shift()
 }
@@ -248,14 +231,9 @@ function draw(){
 
 ctx.clearRect(0,0,canvas.width,canvas.height)
 
-let baseY=canvas.height-140
+/* 線路の高さを上げる */
 
-/* 空 */
-
-ctx.fillStyle="#87ceeb"
-ctx.fillRect(0,0,canvas.width,canvas.height)
-
-/* 地形 */
+let baseY=canvas.height-220
 
 segments.forEach(seg=>{
 
@@ -267,7 +245,7 @@ ctx.fillStyle="#3e8e41"
 
 ctx.beginPath()
 ctx.moveTo(sx,baseY)
-ctx.lineTo(sx+150,baseY-80)
+ctx.lineTo(sx+150,baseY-60)
 ctx.lineTo(sx+300,baseY)
 ctx.fill()
 
@@ -276,11 +254,9 @@ ctx.fill()
 if(seg.type==="tunnel"){
 
 ctx.fillStyle="#555"
-ctx.fillRect(sx+80,baseY-120,140,120)
+ctx.fillRect(sx+80,baseY-90,120,90)
 
 }
-
-/* 枕木 */
 
 ctx.strokeStyle="brown"
 ctx.lineWidth=4
@@ -296,25 +272,21 @@ ctx.stroke()
 
 })
 
-/* レール */
-
 ctx.strokeStyle="black"
 
 ctx.beginPath()
-ctx.moveTo(0,baseY-10)
-ctx.lineTo(canvas.width,baseY-10)
+ctx.moveTo(0,baseY-8)
+ctx.lineTo(canvas.width,baseY-8)
 ctx.stroke()
 
 ctx.beginPath()
-ctx.moveTo(0,baseY+10)
-ctx.lineTo(canvas.width,baseY+10)
+ctx.moveTo(0,baseY+8)
+ctx.lineTo(canvas.width,baseY+8)
 ctx.stroke()
 
 drawTrain(200,baseY+trainY)
 
 }
-
-/* メインループ */
 
 function loop(){
 
