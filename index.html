@@ -305,13 +305,26 @@ world.appendChild(m)
 
 /* ボタン */
 
-document.getElementById("go").onmousedown=()=>goPressed=true
-document.getElementById("go").onmouseup=()=>goPressed=false
-document.getElementById("go").onmouseleave=()=>goPressed=false
+const goBtn = document.getElementById("go")
+const backBtn = document.getElementById("back")
 
-document.getElementById("back").onmousedown=()=>backPressed=true
-document.getElementById("back").onmouseup=()=>backPressed=false
-document.getElementById("back").onmouseleave=()=>backPressed=false
+/* PC操作 */
+
+goBtn.addEventListener("mousedown",()=>goPressed=true)
+goBtn.addEventListener("mouseup",()=>goPressed=false)
+goBtn.addEventListener("mouseleave",()=>goPressed=false)
+
+backBtn.addEventListener("mousedown",()=>backPressed=true)
+backBtn.addEventListener("mouseup",()=>backPressed=false)
+backBtn.addEventListener("mouseleave",()=>backPressed=false)
+
+/* iPhone操作 */
+
+goBtn.addEventListener("touchstart",()=>goPressed=true)
+goBtn.addEventListener("touchend",()=>goPressed=false)
+
+backBtn.addEventListener("touchstart",()=>backPressed=true)
+backBtn.addEventListener("touchend",()=>backPressed=false)
 
 
 function gameLoop(){
