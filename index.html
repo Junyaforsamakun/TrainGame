@@ -2,8 +2,6 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-
-<!-- iPhone対応 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 <title>電車運転ゲーム</title>
@@ -19,19 +17,18 @@ font-family:sans-serif;
 
 canvas{
 display:block;
-background:#87ceeb;
 }
 
 /* ボタン */
 
 button{
 position:absolute;
-bottom:20px;
-padding:20px 45px;
-font-size:24px;
+bottom:30px;
+padding:28px 55px;
+font-size:30px;
 touch-action:none;
 border:none;
-border-radius:12px;
+border-radius:15px;
 }
 
 #go{
@@ -41,8 +38,14 @@ color:white;
 }
 
 #back{
-right:20px;
+left:220px;
 background:#f44336;
+color:white;
+}
+
+#jump{
+right:20px;
+background:#ff9800;
 color:white;
 }
 
@@ -55,6 +58,7 @@ color:white;
 
 <button id="go">出発</button>
 <button id="back">バック</button>
+<button id="jump">ジャンプ</button>
 
 <script>
 
@@ -64,97 +68,106 @@ const ctx = canvas.getContext("2d")
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
-let trainX = 100
-let speed = 0
+let speed=0
+let worldX=0
 
-let goPressed = false
-let backPressed = false
+let trainY=0
+let jumpVelocity=0
+let onGround=true
 
-const goBtn = document.getElementById("go")
-const backBtn = document.getElementById("back")
+let goPressed=false
+let backPressed=false
 
-/* ---------- 操作 ---------- */
+const goBtn=document.getElementById("go")
+const backBtn=document.getElementById("back")
+const jumpBtn=document.getElementById("jump")
 
-function goStart(e){
+/* 操作 */
+
+function goStart(e){if(e)e.preventDefault();goPressed=true}
+function goEnd(){goPressed=false}
+
+function backStart(e){if(e)e.preventDefault();backPressed=true}
+function backEnd(){backPressed=false}
+
+function jumpStart(e){
+
 if(e)e.preventDefault()
-goPressed = true
+
+if(onGround){
+jumpVelocity=-12
+onGround=false
 }
 
-function goEnd(){
-goPressed = false
-}
-
-function backStart(e){
-if(e)e.preventDefault()
-backPressed = true
-}
-
-function backEnd(){
-backPressed = false
 }
 
 /* iPhone */
 
 goBtn.addEventListener("touchstart",goStart,{passive:false})
 goBtn.addEventListener("touchend",goEnd)
-goBtn.addEventListener("touchcancel",goEnd)
 
 backBtn.addEventListener("touchstart",backStart,{passive:false})
 backBtn.addEventListener("touchend",backEnd)
-backBtn.addEventListener("touchcancel",backEnd)
+
+jumpBtn.addEventListener("touchstart",jumpStart,{passive:false})
 
 /* PC */
 
 goBtn.addEventListener("mousedown",goStart)
 goBtn.addEventListener("mouseup",goEnd)
-goBtn.addEventListener("mouseleave",goEnd)
 
 backBtn.addEventListener("mousedown",backStart)
 backBtn.addEventListener("mouseup",backEnd)
-backBtn.addEventListener("mouseleave",backEnd)
 
-/* ---------- 電車描画 ---------- */
+jumpBtn.addEventListener("mousedown",jumpStart)
+
+/* 世界 */
+
+let segments=[]
+
+function createSegment(x){
+
+let r=Math.random()
+
+if(r<0.6) return {x,type:"flat"}
+if(r<0.8) return {x,type:"hill"}
+
+return {x,type:"tunnel"}
+
+}
+
+for(let i=0;i<30;i++){
+segments.push(createSegment(i*300))
+}
+
+/* 電車 */
 
 function drawTrain(x,y){
-
-/* 機関車 */
 
 ctx.fillStyle="black"
 ctx.fillRect(x,y-20,80,20)
 
 ctx.fillRect(x+10,y-40,40,20)
 
-/* 煙突 */
-
 ctx.fillRect(x+55,y-50,10,10)
-
-/* 車輪 */
 
 ctx.beginPath()
 ctx.arc(x+20,y,10,0,Math.PI*2)
 ctx.arc(x+60,y,10,0,Math.PI*2)
 ctx.fill()
 
-/* 客車 */
-
 for(let i=1;i<=3;i++){
 
-let cx = x + i*100
+let cx=x+i*100
 
 ctx.fillStyle="blue"
 ctx.fillRect(cx,y-20,80,20)
 
-/* 窓 */
-
 ctx.fillStyle="white"
 
 for(let w=0;w<3;w++){
-
 ctx.fillRect(cx+10+w*20,y-15,10,10)
-
 }
-
-/* 車輪 */
 
 ctx.fillStyle="black"
 
@@ -167,68 +180,113 @@ ctx.fill()
 
 }
 
-/* ---------- 更新 ---------- */
+/* 更新 */
 
 function update(){
 
 if(goPressed){
-speed += 0.05
+speed+=0.02
 }
 
 if(backPressed){
-speed -= 0.05
+speed-=0.02
 }
 
-/* 摩擦 */
+speed*=0.995
 
-speed *= 0.99
+worldX+=speed*5
 
-trainX += speed
+/* ジャンプ */
+
+jumpVelocity+=0.6
+trainY+=jumpVelocity
+
+if(trainY>0){
+trainY=0
+jumpVelocity=0
+onGround=true
+}
+
+/* 地形生成 */
+
+let last=segments[segments.length-1]
+
+if(last.x-worldX<canvas.width+500){
+segments.push(createSegment(last.x+300))
+}
+
+if(segments[0].x-worldX<-500){
+segments.shift()
+}
 
 }
 
-/* ---------- 描画 ---------- */
+/* 描画 */
 
 function draw(){
 
 ctx.clearRect(0,0,canvas.width,canvas.height)
 
-/* 地面 */
+let baseY=canvas.height-120
 
-ctx.fillStyle="#4CAF50"
-ctx.fillRect(0,canvas.height-100,canvas.width,100)
+/* 地形 */
 
-/* 線路 */
+segments.forEach(seg=>{
+
+let sx=seg.x-worldX
+
+if(seg.type=="hill"){
+
+ctx.fillStyle="#3e8e41"
+
+ctx.beginPath()
+ctx.moveTo(sx,baseY)
+ctx.lineTo(sx+150,baseY-80)
+ctx.lineTo(sx+300,baseY)
+ctx.fill()
+
+}
+
+if(seg.type=="tunnel"){
+
+ctx.fillStyle="#555"
+ctx.fillRect(sx+80,baseY-120,140,120)
+
+}
+
+/* 枕木 */
 
 ctx.strokeStyle="brown"
 ctx.lineWidth=4
 
-for(let i=0;i<canvas.width;i+=40){
+for(let i=0;i<300;i+=40){
 
 ctx.beginPath()
-ctx.moveTo(i,canvas.height-60)
-ctx.lineTo(i+20,canvas.height-60)
+ctx.moveTo(sx+i,baseY)
+ctx.lineTo(sx+i+20,baseY)
 ctx.stroke()
 
 }
+
+})
 
 /* レール */
 
+ctx.strokeStyle="black"
+
 ctx.beginPath()
-ctx.moveTo(0,canvas.height-70)
-ctx.lineTo(canvas.width,canvas.height-70)
+ctx.moveTo(0,baseY-10)
+ctx.lineTo(canvas.width,baseY-10)
 ctx.stroke()
 
 ctx.beginPath()
-ctx.moveTo(0,canvas.height-50)
-ctx.lineTo(canvas.width,canvas.height-50)
+ctx.moveTo(0,baseY+10)
+ctx.lineTo(canvas.width,baseY+10)
 ctx.stroke()
 
-drawTrain(trainX,canvas.height-70)
+drawTrain(200,baseY+trainY)
 
 }
-
-/* ---------- ループ ---------- */
 
 function loop(){
 
