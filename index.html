@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>電車運転ゲーム</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電車ゲーム</title>
 
 <style>
 
@@ -17,33 +17,27 @@ canvas{
 display:block;
 }
 
-/* 操作パネル */
-
 #controls{
 position:absolute;
 bottom:10px;
-left:0;
 width:100%;
 display:flex;
-justify-content:space-evenly;
-gap:10px;
-padding:10px;
-box-sizing:border-box;
+justify-content:space-around;
 }
 
 #controls button{
 flex:1;
-font-size:26px;
-padding:22px 0;
+margin:6px;
+font-size:28px;
+padding:22px;
+border-radius:12px;
 border:none;
-border-radius:14px;
 color:white;
-touch-action:none;
 }
 
-#go{background:#4CAF50;}
-#back{background:#f44336;}
-#jump{background:#ff9800;}
+#go{background:#4CAF50}
+#back{background:#f44336}
+#jump{background:#ff9800}
 
 </style>
 </head>
@@ -53,8 +47,8 @@ touch-action:none;
 <canvas id="game"></canvas>
 
 <div id="controls">
-<button id="go">出発</button>
 <button id="back">バック</button>
+<button id="go">出発</button>
 <button id="jump">ジャンプ</button>
 </div>
 
@@ -71,88 +65,92 @@ canvas.height=window.innerHeight
 resize()
 window.addEventListener("resize",resize)
 
-/* 状態 */
+/* 操作 */
 
-let speed=0
-let worldX=0
+let go=false
+let back=false
+
+document.getElementById("go").ontouchstart=()=>go=true
+document.getElementById("go").ontouchend=()=>go=false
+
+document.getElementById("back").ontouchstart=()=>back=true
+document.getElementById("back").ontouchend=()=>back=false
+
+document.getElementById("go").onmousedown=()=>go=true
+document.getElementById("go").onmouseup=()=>go=false
+
+document.getElementById("back").onmousedown=()=>back=true
+document.getElementById("back").onmouseup=()=>back=false
+
+/* ジャンプ */
 
 let trainY=0
-let jumpVelocity=0
+let jumpV=0
 let onGround=true
 
-let goPressed=false
-let backPressed=false
-
-/* ボタン */
-
-const goBtn=document.getElementById("go")
-const backBtn=document.getElementById("back")
-const jumpBtn=document.getElementById("jump")
-
-function goStart(e){if(e)e.preventDefault();goPressed=true}
-function goEnd(){goPressed=false}
-
-function backStart(e){if(e)e.preventDefault();backPressed=true}
-function backEnd(){backPressed=false}
-
-function jumpStart(e){
+document.getElementById("jump").ontouchstart=()=>{
 if(onGround){
-jumpVelocity=-10
+jumpV=-12
 onGround=false
 }
 }
 
-goBtn.addEventListener("touchstart",goStart,{passive:false})
-goBtn.addEventListener("touchend",goEnd)
+document.getElementById("jump").onmousedown=()=>{
+if(onGround){
+jumpV=-12
+onGround=false
+}
+}
 
-backBtn.addEventListener("touchstart",backStart,{passive:false})
-backBtn.addEventListener("touchend",backEnd)
+/* ワールド */
 
-jumpBtn.addEventListener("touchstart",jumpStart,{passive:false})
+let speed=0
+let worldX=0
 
-goBtn.addEventListener("mousedown",goStart)
-goBtn.addEventListener("mouseup",goEnd)
+let baseHeight=canvas.height-220
 
-backBtn.addEventListener("mousedown",backStart)
-backBtn.addEventListener("mouseup",backEnd)
-
-jumpBtn.addEventListener("mousedown",jumpStart)
-
-/* 地形 */
+/* セグメント */
 
 let segments=[]
 
-function createSegment(x){
+function createSegment(x,lastHeight){
 
+let type="flat"
 let r=Math.random()
 
-if(r<0.5) return {x,type:"flat"}
-if(r<0.7) return {x,type:"uphill"}
-if(r<0.85) return {x,type:"downhill"}
+if(r<0.2) type="up"
+else if(r<0.4) type="down"
+else if(r<0.5) type="bridge"
 
-return {x,type:"bridge"}
+let height=lastHeight
+
+if(type=="up") height-=40
+if(type=="down") height+=40
+
+return{
+x,
+type,
+height
+}
 
 }
 
-for(let i=0;i<30;i++){
-segments.push(createSegment(i*300))
+segments.push({x:0,type:"flat",height:baseHeight})
+
+for(let i=1;i<30;i++){
+segments.push(createSegment(i*300,segments[i-1].height))
 }
 
-/* 背景オブジェクト */
+/* オブジェクト */
 
 let objects=[]
+const types=["tree","house","building","mountain","grave"]
 
 function createObject(x){
-
-let r=Math.random()
-
-if(r<0.25)return{x,type:"tree"}
-if(r<0.5)return{x,type:"house"}
-if(r<0.7)return{x,type:"building"}
-if(r<0.85)return{x,type:"mountain"}
-
-return{x,type:"grave"}
-
+return{
+x,
+type:types[Math.floor(Math.random()*types.length)]
+}
 }
 
 for(let i=0;i<40;i++){
@@ -169,22 +167,14 @@ ctx.fillStyle="#222"
 
 ctx.fillRect(x-70,y-20,70,20)
 ctx.fillRect(x-40,y-40,40,20)
-
-/* 煙突 */
-
 ctx.fillRect(x-60,y-45,10,10)
-
-/* ライト */
 
 ctx.fillStyle="yellow"
 ctx.beginPath()
 ctx.arc(x,y-10,4,0,Math.PI*2)
 ctx.fill()
 
-/* 車輪 */
-
 ctx.fillStyle="black"
-
 ctx.beginPath()
 ctx.arc(x-55,y,8,0,Math.PI*2)
 ctx.arc(x-30,y,8,0,Math.PI*2)
@@ -217,97 +207,17 @@ ctx.fill()
 
 }
 
-/* 背景描画 */
+/* 背景 */
 
-function drawBackground(){
-
-/* 空グラデーション */
+function drawSky(){
 
 let grad=ctx.createLinearGradient(0,0,0,canvas.height)
+
 grad.addColorStop(0,"#6ec6ff")
 grad.addColorStop(1,"#e3f2fd")
 
 ctx.fillStyle=grad
 ctx.fillRect(0,0,canvas.width,canvas.height)
-
-/* 雲 */
-
-ctx.fillStyle="white"
-
-for(let i=0;i<5;i++){
-
-let x=(i*400-worldX*0.2)%canvas.width
-
-ctx.beginPath()
-ctx.arc(x,80,30,0,Math.PI*2)
-ctx.arc(x+30,80,25,0,Math.PI*2)
-ctx.arc(x+60,80,30,0,Math.PI*2)
-ctx.fill()
-
-}
-
-}
-
-/* 背景オブジェクト */
-
-function drawObject(obj,baseY){
-
-let x=obj.x-worldX
-
-switch(obj.type){
-
-case "tree":
-
-ctx.fillStyle="green"
-ctx.beginPath()
-ctx.arc(x+10,baseY-40,20,0,Math.PI*2)
-ctx.fill()
-
-ctx.fillStyle="brown"
-ctx.fillRect(x+7,baseY-40,6,40)
-
-break
-
-case "house":
-
-ctx.fillStyle="#8d6e63"
-ctx.fillRect(x,baseY-50,40,50)
-
-ctx.fillStyle="#c62828"
-ctx.beginPath()
-ctx.moveTo(x-5,baseY-50)
-ctx.lineTo(x+20,baseY-70)
-ctx.lineTo(x+45,baseY-50)
-ctx.fill()
-
-break
-
-case "building":
-
-ctx.fillStyle="#9e9e9e"
-ctx.fillRect(x,baseY-120,50,120)
-
-break
-
-case "mountain":
-
-ctx.fillStyle="#607d8b"
-ctx.beginPath()
-ctx.moveTo(x-40,baseY)
-ctx.lineTo(x+20,baseY-120)
-ctx.lineTo(x+80,baseY)
-ctx.fill()
-
-break
-
-case "grave":
-
-ctx.fillStyle="darkgray"
-ctx.fillRect(x,baseY-30,15,30)
-
-break
-
-}
 
 }
 
@@ -315,60 +225,109 @@ break
 
 function update(){
 
-if(goPressed) speed+=0.03
-if(backPressed) speed-=0.03
-
-/* 摩擦 */
+if(go) speed+=0.03
+if(back) speed-=0.03
 
 speed*=0.99
-
-/* 坂の影響 */
-
-let current=segments.find(s=>200>=s.x-worldX && 200<s.x-worldX+300)
-
-if(current){
-
-if(current.type==="uphill") speed-=0.01
-if(current.type==="downhill") speed+=0.01
-
-}
 
 worldX+=speed*5
 
 /* ジャンプ */
 
-jumpVelocity+=0.6
-trainY+=jumpVelocity
+jumpV+=0.6
+trainY+=jumpV
 
 if(trainY>0){
 trainY=0
-jumpVelocity=0
+jumpV=0
 onGround=true
 }
 
-/* 地形生成 */
+/* セグメント生成 */
 
 let last=segments[segments.length-1]
 
-if(last.x-worldX<canvas.width+500){
-segments.push(createSegment(last.x+300))
+if(last.x-worldX<canvas.width+400){
+segments.push(createSegment(last.x+300,last.height))
 }
 
-if(segments[0].x-worldX<-500){
+if(segments[0].x-worldX<-400){
 segments.shift()
 }
 
-/* オブジェクト生成 */
-
-let lastObj=objects[objects.length-1]
-
-if(lastObj.x-worldX<canvas.width+500){
-objects.push(createObject(lastObj.x+300))
 }
 
-if(objects[0].x-worldX<-500){
-objects.shift()
+/* 線路描画 */
+
+function drawTrack(){
+
+ctx.lineWidth=6
+ctx.strokeStyle="black"
+
+ctx.beginPath()
+
+segments.forEach((seg,i)=>{
+
+let x=seg.x-worldX
+let y=seg.height
+
+if(i==0){
+ctx.moveTo(x,y)
+}else{
+ctx.lineTo(x,y)
 }
+
+})
+
+ctx.stroke()
+
+}
+
+function drawObjects(){
+
+objects.forEach(o=>{
+
+let x=o.x-worldX
+let y=baseHeight
+
+switch(o.type){
+
+case"tree":
+ctx.fillStyle="green"
+ctx.beginPath()
+ctx.arc(x,y-40,20,0,Math.PI*2)
+ctx.fill()
+ctx.fillStyle="brown"
+ctx.fillRect(x-3,y-40,6,40)
+break
+
+case"house":
+ctx.fillStyle="#8d6e63"
+ctx.fillRect(x,y-50,40,50)
+break
+
+case"building":
+ctx.fillStyle="gray"
+ctx.fillRect(x,y-120,50,120)
+break
+
+case"mountain":
+ctx.fillStyle="#607d8b"
+ctx.beginPath()
+ctx.moveTo(x-40,y)
+ctx.lineTo(x+20,y-120)
+ctx.lineTo(x+80,y)
+ctx.fill()
+break
+
+case"grave":
+ctx.fillStyle="darkgray"
+ctx.fillRect(x,y-30,15,30)
+break
+
+}
+
+})
 
 }
 
@@ -376,59 +335,25 @@ objects.shift()
 
 function draw(){
 
-drawBackground()
+drawSky()
 
-let baseY=canvas.height-220
+drawObjects()
 
-segments.forEach(seg=>{
+drawTrack()
 
-let sx=seg.x-worldX
-
-/* 谷＋橋 */
-
-if(seg.type==="bridge"){
-
-ctx.fillStyle="#3f51b5"
-ctx.fillRect(sx,baseY+20,300,200)
-
-ctx.strokeStyle="black"
-ctx.lineWidth=6
-
-ctx.beginPath()
-ctx.moveTo(sx,baseY)
-ctx.lineTo(sx+300,baseY)
-ctx.stroke()
+drawTrain(200,segments[0].height+trainY)
 
 }
 
-})
-
-objects.forEach(o=>{
-drawObject(o,baseY)
-})
-
-/* レール */
-
-ctx.strokeStyle="black"
-
-ctx.beginPath()
-ctx.moveTo(0,baseY-8)
-ctx.lineTo(canvas.width,baseY-8)
-ctx.stroke()
-
-ctx.beginPath()
-ctx.moveTo(0,baseY+8)
-ctx.lineTo(canvas.width,baseY+8)
-ctx.stroke()
-
-drawTrain(200,baseY+trainY)
-
-}
+/* ループ */
 
 function loop(){
+
 update()
 draw()
+
 requestAnimationFrame(loop)
+
 }
 
 loop()
