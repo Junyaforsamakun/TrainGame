@@ -308,6 +308,42 @@ world.appendChild(m)
 const goBtn = document.getElementById("go")
 const backBtn = document.getElementById("back")
 
+function goStart(e){
+e.preventDefault()
+goPressed = true
+}
+
+function goEnd(){
+goPressed = false
+}
+
+function backStart(e){
+e.preventDefault()
+backPressed = true
+}
+
+function backEnd(){
+backPressed = false
+}
+
+/* iPhone */
+goBtn.addEventListener("touchstart", goStart, {passive:false})
+goBtn.addEventListener("touchend", goEnd)
+goBtn.addEventListener("touchcancel", goEnd)
+
+backBtn.addEventListener("touchstart", backStart, {passive:false})
+backBtn.addEventListener("touchend", backEnd)
+backBtn.addEventListener("touchcancel", backEnd)
+
+/* PC */
+goBtn.addEventListener("mousedown", goStart)
+goBtn.addEventListener("mouseup", goEnd)
+goBtn.addEventListener("mouseleave", goEnd)
+
+backBtn.addEventListener("mousedown", backStart)
+backBtn.addEventListener("mouseup", backEnd)
+backBtn.addEventListener("mouseleave", backEnd)
+
 
 function gameLoop(){
 
