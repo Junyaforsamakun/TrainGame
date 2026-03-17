@@ -1,47 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Halloween Train Game</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <style>
+body{margin:0;overflow:hidden;background:black;font-family:sans-serif}
+canvas{display:block}
 
-body{
-margin:0;
-overflow:hidden;
-font-family:sans-serif;
-background:black;
-}
-
-canvas{
-display:block;
+#ui{
+position:absolute;
+top:env(safe-area-inset-top,10px);
+left:10px;
+color:white;
+z-index:10;
 }
 
 #controls{
 position:absolute;
-bottom:0;
+bottom:env(safe-area-inset-bottom,10px);
 width:100%;
 display:flex;
-gap:8px;
+gap:6px;
 padding:10px;
 box-sizing:border-box;
+z-index:10;
 }
 
-#controls button{
+button{
 flex:1;
-font-size:18px;
-padding:20px;
 border:none;
-border-radius:10px;
+border-radius:12px;
 color:white;
+font-weight:bold;
 }
 
 #go{background:#4CAF50}
 #back{background:#e53935}
 #jump{background:#ff9800}
 #beam{background:#00e5ff}
-
 </style>
 </head>
 
@@ -49,348 +44,107 @@ color:white;
 
 <canvas id="game"></canvas>
 
+<div id="ui">
+SCORE:<span id="score">0</span>
+</div>
+
 <div id="controls">
-<button id="back">バック</button>
-<button id="go">出発</button>
-<button id="jump">ジャンプ</button>
-<button id="beam">ビーム</button>
+<button id="back">←</button>
+<button id="go">→</button>
+<button id="jump">JUMP</button>
+<button id="beam">BEAM</button>
 </div>
 
 <script>
-
-const canvas=document.getElementById("game")
+const canvas=game
 const ctx=canvas.getContext("2d")
 
+let isPortrait=true
+
 function resize(){
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
+canvas.width=innerWidth
+canvas.height=innerHeight
+isPortrait=innerHeight>innerWidth
+adjustUI()
 }
-
+window.onresize=resize
 resize()
-window.addEventListener("resize",resize)
 
-let worldX=0
-let speed=0
+function adjustUI(){
+const controls=document.getElementById("controls")
+if(isPortrait){
+controls.style.flexDirection="column"
+}else{
+controls.style.flexDirection="row"
+}
+}
 
-let go=false
-let back=false
+/* ===== 状態 ===== */
+let state="TITLE"
+let worldX=0,speed=0
+let trainY=0,jumpV=0,jumpCount=0
+let ghosts=[],beams=[],particles=[]
+let score=0
+let baseHeight
 
-let trainY=0
-let jumpV=0
-let onGround=true
+function init(){
+worldX=0
+speed=0
+trainY=0
+jumpV=0
+jumpCount=0
+ghosts=[]
+beams=[]
+particles=[]
+score=0
+baseHeight=canvas.height-200
+}
 
-let beams=[]
-let ghosts=[]
-let stations=[]
+/* ===== 入力 ===== */
+let goF=false,backF=false
+go.onmousedown=()=>goF=true
+go.onmouseup=()=>goF=false
+back.onmousedown=()=>backF=true
+back.onmouseup=()=>backF=false
 
-let baseHeight=canvas.height-220
-
-document.getElementById("go").ontouchstart=()=>go=true
-document.getElementById("go").ontouchend=()=>go=false
-document.getElementById("back").ontouchstart=()=>back=true
-document.getElementById("back").ontouchend=()=>back=false
-
-document.getElementById("go").onmousedown=()=>go=true
-document.getElementById("go").onmouseup=()=>go=false
-document.getElementById("back").onmousedown=()=>back=true
-document.getElementById("back").onmouseup=()=>back=false
-
-document.getElementById("jump").onclick=()=>{
-if(onGround){
+jump.onclick=()=>{
+if(state==="PLAY"&&jumpCount<2){
 jumpV=-12
-onGround=false
+jumpCount++
 }
 }
 
-document.getElementById("beam").onclick=()=>{
-beams.push({x:worldX+200,life:40})
+beam.onclick=()=>{
+if(state==="PLAY"){
+beams.push({x:worldX+200,life:15})
+}
 }
 
-let segments=[{x:0,height:baseHeight,type:"flat"}]
-
-function createSegment(x,last){
-
-let r=Math.random()
-let type="flat"
-
-if(r<0.2) type="up"
-else if(r<0.4) type="down"
-else if(r<0.5) type="bridge"
-else if(r<0.6) type="tunnel"
-
-let h=last
-
-if(type==="up")h-=40
-if(type==="down")h+=40
-
-return{x,height:h,type}
-
-}
-
-for(let i=1;i<40;i++){
-
-let prev=segments[i-1]
-segments.push(createSegment(i*300,prev.height))
-
-}
-
-function getTrackHeight(pos){
-
-for(let i=0;i<segments.length-1;i++){
-
-let s1=segments[i]
-let s2=segments[i+1]
-
-if(pos>=s1.x && pos<=s2.x){
-
-let t=(pos-s1.x)/(s2.x-s1.x)
-return s1.height+(s2.height-s1.height)*t
-
-}
-
-}
-
-return baseHeight
-
-}
-
-function getTrackAngle(pos){
-
-for(let i=0;i<segments.length-1;i++){
-
-let s1=segments[i]
-let s2=segments[i+1]
-
-if(pos>=s1.x && pos<=s2.x){
-
-return Math.atan2(s2.height-s1.height,s2.x-s1.x)
-
-}
-
-}
-
-return 0
-
-}
-
-/* ハロウィン空 */
-
-function drawSky(){
-
-let g=ctx.createLinearGradient(0,0,0,canvas.height)
-
-g.addColorStop(0,"#ff7b00")
-g.addColorStop(0.4,"#ff2e63")
-g.addColorStop(1,"#2b0a3d")
-
-ctx.fillStyle=g
-ctx.fillRect(0,0,canvas.width,canvas.height)
-
-/* 月 */
-
-ctx.fillStyle="#fff8b0"
-
-ctx.beginPath()
-ctx.arc(canvas.width-120,120,40,0,Math.PI*2)
-ctx.fill()
-
-/* コウモリ */
-
-ctx.fillStyle="black"
-
-for(let i=0;i<5;i++){
-
-let x=(i*300-worldX*0.2)%canvas.width
-let y=120+Math.sin(worldX*0.01+i)*30
-
-ctx.beginPath()
-ctx.moveTo(x,y)
-ctx.lineTo(x+10,y-6)
-ctx.lineTo(x+20,y)
-ctx.lineTo(x+10,y+6)
-ctx.fill()
-
-}
-
-/* 霧 */
-
-ctx.fillStyle="rgba(255,255,255,0.08)"
-
-for(let i=0;i<6;i++){
-
-let x=(i*250-worldX*0.5)%canvas.width
-ctx.fillRect(x,canvas.height-200,200,80)
-
-}
-
-}
-
-/* 線路 */
-
-function drawTrack(){
-
-ctx.strokeStyle="black"
-ctx.lineWidth=6
-
-ctx.beginPath()
-
-for(let i=0;i<segments.length-1;i++){
-
-let s1=segments[i]
-let s2=segments[i+1]
-
-ctx.moveTo(s1.x-worldX,s1.height)
-ctx.lineTo(s2.x-worldX,s2.height)
-
-}
-
-ctx.stroke()
-
-}
-
-/* 鉄橋 */
-
-function drawBridge(x1,x2,y){
-
-ctx.fillStyle="#1a1a2e"
-ctx.fillRect(x1,y+10,x2-x1,200)
-
-ctx.strokeStyle="#999"
-
-for(let x=x1;x<x2;x+=40){
-
-ctx.beginPath()
-ctx.moveTo(x,y)
-ctx.lineTo(x+20,y-30)
-ctx.lineTo(x+40,y)
-ctx.stroke()
-
-}
-
-}
-
-/* トンネル */
-
-function drawTunnel(x,y){
-
-ctx.fillStyle="#2d1b3d"
-
-ctx.beginPath()
-ctx.moveTo(x-120,y)
-ctx.lineTo(x,y-200)
-ctx.lineTo(x+120,y)
-ctx.fill()
-
-ctx.fillStyle="black"
-ctx.beginPath()
-ctx.arc(x,y,40,Math.PI,0)
-ctx.fill()
-
-}
-
-/* 電車 */
-
-function drawTrain(){
-
-ctx.fillStyle="#222"
-
-ctx.fillRect(-70,-20,70,20)
-ctx.fillRect(-40,-40,40,20)
-
-ctx.fillStyle="yellow"
-
-ctx.beginPath()
-ctx.arc(0,-10,4,0,Math.PI*2)
-ctx.fill()
-
-ctx.fillStyle="black"
-
-ctx.beginPath()
-ctx.arc(-50,0,8,0,Math.PI*2)
-ctx.arc(-20,0,8,0,Math.PI*2)
-ctx.fill()
-
-for(let i=1;i<=3;i++){
-
-let cx=i*80
-
-ctx.fillStyle="#1976d2"
-ctx.fillRect(cx,-18,60,18)
-
-ctx.beginPath()
-ctx.arc(cx+10,0,8,0,Math.PI*2)
-ctx.arc(cx+45,0,8,0,Math.PI*2)
-ctx.fill()
-
-}
-
-}
-
-/* 幽霊 */
-
-function drawGhost(g){
-
-let x=g.x-worldX
-
-ctx.fillStyle="rgba(255,255,255,0.8)"
-
-ctx.beginPath()
-ctx.arc(x,g.y-20,15,0,Math.PI*2)
-ctx.fill()
-
-ctx.fillRect(x-15,g.y-20,30,20)
-
-}
-
-/* ゾンビ駅 */
-
-function drawStation(s){
-
-let x=s.x-worldX
-let y=baseHeight
-
-ctx.fillStyle="#555"
-ctx.fillRect(x-80,y-10,160,10)
-
-ctx.fillStyle="#2e7d32"
-ctx.fillRect(x-40,y-60,80,50)
-
-ctx.fillStyle="white"
-ctx.fillRect(x-25,y-80,50,20)
-
-ctx.fillStyle="black"
-ctx.fillText("ZOMBIE",x-20,y-65)
-
-}
-
-/* ビーム */
-
-function drawBeams(){
-
-ctx.strokeStyle="#00ffff"
-ctx.lineWidth=4
-
-beams.forEach(b=>{
-
-let x=b.x-worldX
-
-ctx.beginPath()
-ctx.moveTo(200,baseHeight-40)
-ctx.lineTo(x+300,baseHeight-40)
-ctx.stroke()
-
+/* ===== 爆発 ===== */
+function explode(x,y){
+for(let i=0;i<30;i++){
+particles.push({
+x,y,
+vx:(Math.random()-0.5)*8,
+vy:(Math.random()-0.5)*8,
+life:30
 })
-
+}
 }
 
+/* ===== 更新 ===== */
 function update(){
 
-if(go)speed+=0.03
-if(back)speed-=0.03
+if(state!=="PLAY")return
 
-speed*=0.99
-
+if(goF)speed+=0.05
+if(backF)speed-=0.05
+speed*=0.98
 worldX+=speed*5
+
+/* 坂道（sin波） */
+let slope=Math.sin(worldX*0.01)*50
+let ground=baseHeight+slope
 
 jumpV+=0.6
 trainY+=jumpV
@@ -398,80 +152,153 @@ trainY+=jumpV
 if(trainY>0){
 trainY=0
 jumpV=0
-onGround=true
+jumpCount=0
 }
 
-if(Math.random()<0.01){
+/* 幽霊 */
+if(Math.random()<0.02){
+ghosts.push({x:worldX+canvas.width+200})
+}
 
-ghosts.push({
-x:worldX+canvas.width+200,
-y:baseHeight
+ghosts.forEach(g=>{
+g.x-=2
+if(Math.abs((g.x-worldX)-200)<30 && trainY===0){
+explode(g.x,ground)
+}
 })
 
+/* ビーム */
+beams.forEach(b=>{
+let bx=b.x-worldX+400
+ghosts.forEach(g=>{
+if(Math.abs((g.x-worldX)-bx)<40){
+g.hit=true
+score+=10
+explode(g.x,baseHeight)
 }
+})
+})
+ghosts=ghosts.filter(g=>!g.hit)
 
-ghosts.forEach(g=>g.x-=2)
-
-if(Math.random()<0.003){
-
-stations.push({x:worldX+canvas.width+500})
-
-}
+/* パーティクル */
+particles.forEach(p=>{
+p.x+=p.vx
+p.y+=p.vy
+p.vy+=0.2
+p.life--
+})
+particles=particles.filter(p=>p.life>0)
 
 beams.forEach(b=>b.life--)
 beams=beams.filter(b=>b.life>0)
 
 }
 
+/* ===== 描画 ===== */
 function draw(){
 
-drawSky()
+/* ハロウィン空 */
+let grad=ctx.createLinearGradient(0,0,0,canvas.height)
+grad.addColorStop(0,"#1a0033")
+grad.addColorStop(1,"#ff6600")
+ctx.fillStyle=grad
+ctx.fillRect(0,0,canvas.width,canvas.height)
 
-drawTrack()
+/* 地面ライン（坂） */
+ctx.strokeStyle="#654321"
+ctx.lineWidth=4
+ctx.beginPath()
 
-segments.forEach((s,i)=>{
+for(let x=0;x<canvas.width;x+=10){
+let wx=worldX+x
+let y=baseHeight+Math.sin(wx*0.01)*50
+ctx.lineTo(x,y)
+}
+ctx.stroke()
 
-let next=segments[i+1]
-if(!next)return
+/* トンネル */
+ctx.fillStyle="#111"
+ctx.fillRect(300,baseHeight-100,150,100)
 
-let x1=s.x-worldX
-let x2=next.x-worldX
+/* 鉄橋 */
+ctx.strokeStyle="gray"
+ctx.beginPath()
+ctx.moveTo(600,baseHeight)
+ctx.lineTo(700,baseHeight-100)
+ctx.stroke()
 
-if(s.type==="bridge")drawBridge(x1,x2,s.height)
-if(s.type==="tunnel")drawTunnel((x1+x2)/2,s.height)
-
+/* 幽霊 */
+ghosts.forEach(g=>{
+let x=g.x-worldX
+let y=baseHeight-20
+ctx.fillStyle="white"
+ctx.beginPath()
+ctx.arc(x,y,15,0,Math.PI*2)
+ctx.fill()
 })
 
-ghosts.forEach(drawGhost)
-stations.forEach(drawStation)
+/* 電車（坂に沿う） */
+let trainX=200
+let trainYPos=baseHeight+Math.sin((worldX+trainX)*0.01)*50+trainY
 
-let trainPos=worldX+200
-let trackY=getTrackHeight(trainPos)
-let angle=getTrackAngle(trainPos)
+ctx.fillStyle="#222"
+ctx.fillRect(trainX,trainYPos-20,60,20)
+ctx.fillStyle="red"
+ctx.fillRect(trainX+60,trainYPos-30,30,30)
 
-ctx.save()
-ctx.translate(200,trackY+trainY)
-ctx.rotate(angle)
+/* ビーム */
+ctx.strokeStyle="cyan"
+ctx.lineWidth=20
+beams.forEach(b=>{
+ctx.beginPath()
+ctx.moveTo(trainX,trainYPos-20)
+ctx.lineTo(b.x-worldX+400,trainYPos-20)
+ctx.stroke()
+})
 
-drawTrain()
+/* パーティクル */
+particles.forEach(p=>{
+ctx.fillStyle="orange"
+ctx.fillRect(p.x-worldX,p.y,4,4)
+})
 
-ctx.restore()
+/* UI */
+scoreEl.innerText=score
 
-drawBeams()
-
+/* タイトル */
+if(state==="TITLE"){
+ctx.fillStyle="orange"
+ctx.font="40px sans-serif"
+ctx.fillText("HALLOWEEN TRAIN",40,200)
 }
 
-function loop(){
+/* GAMEOVER */
+if(state==="GAMEOVER"){
+ctx.fillStyle="red"
+ctx.font="40px sans-serif"
+ctx.fillText("GAME OVER",40,200)
+}
+}
 
+/* タップ */
+canvas.onclick=()=>{
+if(state==="TITLE"){
+init()
+state="PLAY"
+}else if(state==="GAMEOVER"){
+init()
+state="PLAY"
+}
+}
+
+/* ループ */
+function loop(){
 update()
 draw()
-
 requestAnimationFrame(loop)
-
 }
-
 loop()
-
 </script>
+
 </body>
 </html>
