@@ -1,42 +1,265 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-body{margin:0;overflow:hidden;background:black;}
+body{
+  margin:0;
+  overflow:hidden;
+  background:black;
+  touch-action:none; /* 超重要 */
+}
 canvas{display:block;}
 </style>
 </head>
-<body>
 
-<canvas id="c"></canvas>
+<body>
+<canvas id="game"></canvas>
 
 <script>
-const c=document.getElementById("c")
-const ctx=c.getContext("2d")
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
-c.width=innerWidth
-c.height=innerHeight
+/* ===== 画面 ===== */
+function resize(){
+  canvas.width=innerWidth
+  canvas.height=innerHeight
+  baseHeight=canvas.height*0.7
+}
+let baseHeight=0
+resize()
+window.addEventListener("resize",resize)
 
-let x=100
+/* ===== 状態 ===== */
+let worldX=0
+let speed=0
+let trainY=0
+let jumpV=0
+let jumpCount=0
 
-/* タッチで動くテスト */
-c.addEventListener("touchstart",()=>{
-  x+=50
+let ghosts=[]
+let beams=[]
+let particles=[]
+
+let goF=false
+let backF=false
+
+/* ===== 入力（最強対応） ===== */
+canvas.addEventListener("touchstart",(e)=>{
+  e.preventDefault()
+
+  if(e.touches.length===2){
+    beams.push({life:50,phase:"charge"})
+    return
+  }
+
+  let t=e.touches[0]
+  let x=t.clientX
+  let y=t.clientY
+
+  if(y < canvas.height*0.4){
+    if(jumpCount<2){
+      jumpV=-14
+      jumpCount++
+    }
+  }else{
+    if(x < canvas.width/2){
+      backF=true
+    }else{
+      goF=true
+    }
+  }
+
+},{passive:false})
+
+canvas.addEventListener("touchend",()=>{
+  goF=false
+  backF=false
 })
 
-/* ループ */
+/* pointer（保険） */
+canvas.addEventListener("pointerdown",(e)=>{
+  e.preventDefault()
+  if(e.clientY < canvas.height*0.4){
+    if(jumpCount<2){
+      jumpV=-14
+      jumpCount++
+    }
+  }else{
+    if(e.clientX < canvas.width/2){
+      backF=true
+    }else{
+      goF=true
+    }
+  }
+})
+
+canvas.addEventListener("pointerup",()=>{
+  goF=false
+  backF=false
+})
+
+/* ===== 地面 ===== */
+function groundY(x){
+  return baseHeight + Math.sin(x*0.01)*60
+}
+
+/* ===== 爆発 ===== */
+function explode(x,y){
+  for(let i=0;i<40;i++){
+    particles.push({
+      x,y,
+      vx:(Math.random()-0.5)*10,
+      vy:(Math.random()-0.5)*10,
+      life:40
+    })
+  }
+}
+
+/* ===== 更新 ===== */
+function update(){
+
+  if(goF)speed+=0.05
+  if(backF)speed-=0.05
+  speed*=0.98
+
+  worldX+=speed*5
+
+  /* ジャンプ */
+  jumpV+=0.7
+  trainY+=jumpV
+
+  if(trainY>0){
+    trainY=0
+    jumpV=0
+    jumpCount=0
+  }
+
+  /* 幽霊 */
+  if(Math.random()<0.02){
+    ghosts.push({x:worldX+canvas.width+200})
+  }
+
+  /* 波動砲 */
+  beams.forEach(b=>{
+    b.life--
+    if(b.life<30)b.phase="fire"
+
+    if(b.phase==="fire"){
+      ghosts.forEach(g=>{
+        if(Math.abs((g.x-worldX)-400)<80){
+          explode(g.x,groundY(g.x))
+          g.hit=true
+        }
+      })
+    }
+  })
+
+  ghosts=ghosts.filter(g=>!g.hit)
+  beams=beams.filter(b=>b.life>0)
+
+  /* パーティクル */
+  particles.forEach(p=>{
+    p.x+=p.vx
+    p.y+=p.vy
+    p.vy+=0.3
+    p.life--
+  })
+  particles=particles.filter(p=>p.life>0)
+}
+
+/* ===== 描画 ===== */
+function draw(){
+
+  /* 背景 */
+  let grad=ctx.createLinearGradient(0,0,0,canvas.height)
+  grad.addColorStop(0,"#1a0033")
+  grad.addColorStop(1,"#ff5500")
+  ctx.fillStyle=grad
+  ctx.fillRect(0,0,canvas.width,canvas.height)
+
+  /* 地面 */
+  ctx.strokeStyle="#654321"
+  ctx.beginPath()
+  for(let x=0;x<canvas.width;x+=10){
+    ctx.lineTo(x,groundY(worldX+x))
+  }
+  ctx.stroke()
+
+  /* 幽霊 */
+  ghosts.forEach(g=>{
+    ctx.fillStyle="white"
+    ctx.beginPath()
+    ctx.arc(g.x-worldX,groundY(g.x)-20,15,0,Math.PI*2)
+    ctx.fill()
+  })
+
+  /* 電車 */
+  let tx=200
+  let ty=groundY(worldX+tx)+trainY
+
+  let angle=Math.atan2(
+    groundY(worldX+tx+1)-groundY(worldX+tx),
+    1
+  )
+
+  ctx.save()
+  ctx.translate(tx,ty)
+  ctx.rotate(angle)
+
+  ctx.fillStyle="#222"
+  ctx.fillRect(-30,-30,60,30)
+  ctx.fillRect(30,-40,30,30)
+
+  ctx.fillRect(70,-25,50,25)
+  ctx.fillRect(130,-25,50,25)
+
+  [-20,10,40,80,110,150].forEach(w=>{
+    ctx.beginPath()
+    ctx.arc(w,0,10,0,Math.PI*2)
+    ctx.fill()
+  })
+
+  ctx.restore()
+
+  /* 波動砲 */
+  beams.forEach(b=>{
+    let sx=tx
+    let sy=ty-20
+    let ex=tx+600
+
+    if(b.phase==="charge"){
+      ctx.fillStyle="cyan"
+      ctx.beginPath()
+      ctx.arc(sx,sy,20+Math.sin(b.life)*5,0,Math.PI*2)
+      ctx.fill()
+    }else{
+      for(let i=0;i<4;i++){
+        ctx.strokeStyle="rgba(0,255,255,"+(0.3-i*0.07)+")"
+        ctx.lineWidth=80+i*20
+        ctx.beginPath()
+        ctx.moveTo(sx,sy)
+        ctx.lineTo(ex,sy)
+        ctx.stroke()
+      }
+    }
+  })
+
+  /* パーティクル */
+  particles.forEach(p=>{
+    ctx.fillStyle="orange"
+    ctx.fillRect(p.x-worldX,p.y,4,4)
+  })
+}
+
+/* ===== ループ ===== */
 function loop(){
-  ctx.fillStyle="black"
-  ctx.fillRect(0,0,c.width,c.height)
-
-  ctx.fillStyle="red"
-  ctx.fillRect(x,200,100,100)
-
+  update()
+  draw()
   requestAnimationFrame(loop)
 }
 loop()
-</script>
 
+</script>
 </body>
 </html>
