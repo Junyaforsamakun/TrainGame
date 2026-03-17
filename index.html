@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{margin:0;overflow:hidden;background:black}
 canvas{display:block}
@@ -44,12 +44,21 @@ color:white;
 </div>
 
 <script>
+
+/* ===== 要素取得（これ必須） ===== */
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
+const go=document.getElementById("go")
+const back=document.getElementById("back")
+const jump=document.getElementById("jump")
+const beam=document.getElementById("beam")
+
+/* ===== 画面 ===== */
 function resize(){
 canvas.width=innerWidth
 canvas.height=innerHeight
+baseHeight=canvas.height-200
 }
 window.onresize=resize
 resize()
@@ -60,9 +69,7 @@ let trainY=0,jumpV=0,jumpCount=0
 let ghosts=[],beams=[],particles=[]
 let baseHeight=canvas.height-200
 
-/* ===== エフェクト ===== */
-let shake=0
-let flash=0
+let shake=0,flash=0
 
 /* ===== 入力 ===== */
 let goF=false,backF=false
@@ -84,7 +91,7 @@ jumpCount++
 }
 }
 
-/* ===== 波動砲発射 ===== */
+/* ===== 波動砲 ===== */
 beam.onclick=()=>{
 beams.push({
 x:worldX+200,
@@ -92,22 +99,22 @@ life:40,
 phase:"charge"
 })
 shake=15
-flash=0.6
+flash=0.5
 }
 
 /* ===== 爆発 ===== */
 function explode(x,y){
-for(let i=0;i<50;i++){
+for(let i=0;i<40;i++){
 particles.push({
 x,y,
-vx:(Math.random()-0.5)*10,
-vy:(Math.random()-0.5)*10,
+vx:(Math.random()-0.5)*8,
+vy:(Math.random()-0.5)*8,
 life:40
 })
 }
 }
 
-/* ===== 蒸気機関車 ===== */
+/* ===== 機関車 ===== */
 function drawTrain(x,y){
 
 let dir=speed>=0?1:-1
@@ -172,14 +179,19 @@ worldX+=speed*5
 
 jumpV+=0.6
 trainY+=jumpV
-if(trainY>0){trainY=0;jumpV=0;jumpCount=0}
+
+if(trainY>0){
+trainY=0
+jumpV=0
+jumpCount=0
+}
 
 /* 敵 */
 if(Math.random()<0.02){
 ghosts.push({x:worldX+canvas.width+200})
 }
 
-/* ビーム処理 */
+/* ビーム */
 beams.forEach(b=>{
 b.life--
 
@@ -208,10 +220,9 @@ p.life--
 })
 particles=particles.filter(p=>p.life>0)
 
-/* エフェクト減衰 */
+/* 減衰 */
 shake*=0.9
 flash*=0.85
-
 }
 
 /* ===== 描画 ===== */
@@ -219,7 +230,6 @@ function draw(){
 
 ctx.save()
 
-/* シェイク */
 ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake)
 
 /* 背景 */
@@ -252,41 +262,35 @@ let trainX=200
 let trainYPos=baseHeight+Math.sin((worldX+trainX)*0.01)*50+trainY
 drawTrain(trainX,trainYPos)
 
-/* ===== 波動砲描画 ===== */
+/* 波動砲 */
 beams.forEach(b=>{
-
 let startX=trainX
 let startY=trainYPos-20
 let endX=b.x-worldX+400
 
 if(b.phase==="charge"){
-/* チャージ球 */
 ctx.fillStyle="cyan"
 ctx.beginPath()
 ctx.arc(startX,startY,20+Math.sin(b.life)*5,0,Math.PI*2)
 ctx.fill()
 }else{
-
 let width=60+Math.sin(b.life*0.3)*15
 
-/* オーラ */
 for(let i=0;i<4;i++){
 ctx.strokeStyle="rgba(0,255,255,"+(0.3-i*0.07)+")"
 ctx.lineWidth=width+i*20
 ctx.beginPath()
 ctx.moveTo(startX,startY)
-ctx.lineTo(endX,startY+Math.sin(worldX*0.2)*5)
+ctx.lineTo(endX,startY)
 ctx.stroke()
 }
 
-/* コア */
 ctx.strokeStyle="white"
 ctx.lineWidth=width*0.3
 ctx.beginPath()
 ctx.moveTo(startX,startY)
 ctx.lineTo(endX,startY)
 ctx.stroke()
-
 }
 })
 
@@ -305,7 +309,6 @@ ctx.fillRect(p.x-worldX,p.y,4,4)
 
 ctx.restore()
 
-/* フラッシュ */
 if(flash>0){
 ctx.fillStyle="rgba(255,255,255,"+flash+")"
 ctx.fillRect(0,0,canvas.width,canvas.height)
@@ -319,6 +322,7 @@ draw()
 requestAnimationFrame(loop)
 }
 loop()
+
 </script>
 
 </body>
