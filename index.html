@@ -7,7 +7,7 @@ body{
   margin:0;
   overflow:hidden;
   background:black;
-  touch-action:none; /* 超重要 */
+  touch-action:none;
 }
 canvas{display:block;}
 </style>
@@ -21,96 +21,88 @@ const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
 /* ===== 画面 ===== */
+let baseY=0
 function resize(){
   canvas.width=innerWidth
   canvas.height=innerHeight
-  baseHeight=canvas.height*0.7
+  baseY=canvas.height*0.7
 }
-let baseHeight=0
 resize()
 window.addEventListener("resize",resize)
 
 /* ===== 状態 ===== */
 let worldX=0
 let speed=0
-let trainY=0
+
 let jumpV=0
+let jumpY=0
 let jumpCount=0
 
 let ghosts=[]
 let beams=[]
 let particles=[]
 
-let goF=false
-let backF=false
+let go=false
+let back=false
 
-/* ===== 入力（最強対応） ===== */
+/* ===== 入力 ===== */
 canvas.addEventListener("touchstart",(e)=>{
   e.preventDefault()
 
   if(e.touches.length===2){
-    beams.push({life:50,phase:"charge"})
+    beams.push({life:40})
     return
   }
 
   let t=e.touches[0]
-  let x=t.clientX
-  let y=t.clientY
 
-  if(y < canvas.height*0.4){
+  if(t.clientY < canvas.height*0.4){
     if(jumpCount<2){
-      jumpV=-14
+      jumpV=-15
       jumpCount++
     }
   }else{
-    if(x < canvas.width/2){
-      backF=true
-    }else{
-      goF=true
-    }
+    if(t.clientX < canvas.width/2) back=true
+    else go=true
   }
 
 },{passive:false})
 
 canvas.addEventListener("touchend",()=>{
-  goF=false
-  backF=false
+  go=false
+  back=false
 })
 
-/* pointer（保険） */
+/* pointer */
 canvas.addEventListener("pointerdown",(e)=>{
   e.preventDefault()
   if(e.clientY < canvas.height*0.4){
     if(jumpCount<2){
-      jumpV=-14
+      jumpV=-15
       jumpCount++
     }
   }else{
-    if(e.clientX < canvas.width/2){
-      backF=true
-    }else{
-      goF=true
-    }
+    if(e.clientX < canvas.width/2) back=true
+    else go=true
   }
 })
-
 canvas.addEventListener("pointerup",()=>{
-  goF=false
-  backF=false
+  go=false
+  back=false
 })
 
-/* ===== 地面 ===== */
-function groundY(x){
-  return baseHeight + Math.sin(x*0.01)*60
+/* ===== 地形 ===== */
+function ground(x){
+  return baseY + Math.sin(x*0.01)*60
 }
 
 /* ===== 爆発 ===== */
 function explode(x,y){
-  for(let i=0;i<40;i++){
+  for(let i=0;i<30;i++){
     particles.push({
       x,y,
-      vx:(Math.random()-0.5)*10,
-      vy:(Math.random()-0.5)*10,
+      vx:(Math.random()-0.5)*8,
+      vy:(Math.random()-0.5)*8,
       life:40
     })
   }
@@ -119,40 +111,36 @@ function explode(x,y){
 /* ===== 更新 ===== */
 function update(){
 
-  if(goF)speed+=0.05
-  if(backF)speed-=0.05
+  if(go) speed+=0.05
+  if(back) speed-=0.05
   speed*=0.98
 
   worldX+=speed*5
 
   /* ジャンプ */
-  jumpV+=0.7
-  trainY+=jumpV
+  jumpV+=0.8
+  jumpY+=jumpV
 
-  if(trainY>0){
-    trainY=0
+  if(jumpY>0){
+    jumpY=0
     jumpV=0
     jumpCount=0
   }
 
   /* 幽霊 */
   if(Math.random()<0.02){
-    ghosts.push({x:worldX+canvas.width+200})
+    ghosts.push({x:worldX+canvas.width+100})
   }
 
   /* 波動砲 */
   beams.forEach(b=>{
     b.life--
-    if(b.life<30)b.phase="fire"
-
-    if(b.phase==="fire"){
-      ghosts.forEach(g=>{
-        if(Math.abs((g.x-worldX)-400)<80){
-          explode(g.x,groundY(g.x))
-          g.hit=true
-        }
-      })
-    }
+    ghosts.forEach(g=>{
+      if(Math.abs((g.x-worldX)-200)<120){
+        explode(g.x,ground(g.x))
+        g.hit=true
+      }
+    })
   })
 
   ghosts=ghosts.filter(g=>!g.hit)
@@ -171,18 +159,18 @@ function update(){
 /* ===== 描画 ===== */
 function draw(){
 
-  /* 背景 */
-  let grad=ctx.createLinearGradient(0,0,0,canvas.height)
-  grad.addColorStop(0,"#1a0033")
-  grad.addColorStop(1,"#ff5500")
-  ctx.fillStyle=grad
+  /* ハロウィン背景 */
+  let g=ctx.createLinearGradient(0,0,0,canvas.height)
+  g.addColorStop(0,"#220033")
+  g.addColorStop(1,"#ff6600")
+  ctx.fillStyle=g
   ctx.fillRect(0,0,canvas.width,canvas.height)
 
   /* 地面 */
-  ctx.strokeStyle="#654321"
+  ctx.strokeStyle="#552200"
   ctx.beginPath()
   for(let x=0;x<canvas.width;x+=10){
-    ctx.lineTo(x,groundY(worldX+x))
+    ctx.lineTo(x,ground(worldX+x))
   }
   ctx.stroke()
 
@@ -190,24 +178,26 @@ function draw(){
   ghosts.forEach(g=>{
     ctx.fillStyle="white"
     ctx.beginPath()
-    ctx.arc(g.x-worldX,groundY(g.x)-20,15,0,Math.PI*2)
+    ctx.arc(g.x-worldX,ground(g.x)-20,15,0,Math.PI*2)
     ctx.fill()
   })
 
   /* 電車 */
   let tx=200
-  let ty=groundY(worldX+tx)+trainY
+  let gy=ground(worldX+tx)
 
   let angle=Math.atan2(
-    groundY(worldX+tx+1)-groundY(worldX+tx),
+    ground(worldX+tx+1)-gy,
     1
   )
+
+  let ty=gy+jumpY
 
   ctx.save()
   ctx.translate(tx,ty)
   ctx.rotate(angle)
 
-  ctx.fillStyle="#222"
+  ctx.fillStyle="#111"
   ctx.fillRect(-30,-30,60,30)
   ctx.fillRect(30,-40,30,30)
 
@@ -228,24 +218,17 @@ function draw(){
     let sy=ty-20
     let ex=tx+600
 
-    if(b.phase==="charge"){
-      ctx.fillStyle="cyan"
+    for(let i=0;i<4;i++){
+      ctx.strokeStyle="rgba(0,255,255,"+(0.3-i*0.07)+")"
+      ctx.lineWidth=60+i*20
       ctx.beginPath()
-      ctx.arc(sx,sy,20+Math.sin(b.life)*5,0,Math.PI*2)
-      ctx.fill()
-    }else{
-      for(let i=0;i<4;i++){
-        ctx.strokeStyle="rgba(0,255,255,"+(0.3-i*0.07)+")"
-        ctx.lineWidth=80+i*20
-        ctx.beginPath()
-        ctx.moveTo(sx,sy)
-        ctx.lineTo(ex,sy)
-        ctx.stroke()
-      }
+      ctx.moveTo(sx,sy)
+      ctx.lineTo(ex,sy)
+      ctx.stroke()
     }
   })
 
-  /* パーティクル */
+  /* 爆発 */
   particles.forEach(p=>{
     ctx.fillStyle="orange"
     ctx.fillRect(p.x-worldX,p.y,4,4)
