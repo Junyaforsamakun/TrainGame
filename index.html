@@ -56,9 +56,19 @@ SCORE:<span id="score">0</span>
 </div>
 
 <script>
-const canvas=game
+
+/* ===== 要素取得（これが超重要） ===== */
+const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
+const scoreEl=document.getElementById("score")
+
+const go=document.getElementById("go")
+const back=document.getElementById("back")
+const jump=document.getElementById("jump")
+const beam=document.getElementById("beam")
+
+/* ===== 画面 ===== */
 let isPortrait=true
 
 function resize(){
@@ -72,11 +82,7 @@ resize()
 
 function adjustUI(){
 const controls=document.getElementById("controls")
-if(isPortrait){
-controls.style.flexDirection="column"
-}else{
-controls.style.flexDirection="row"
-}
+controls.style.flexDirection=isPortrait?"column":"row"
 }
 
 /* ===== 状態 ===== */
@@ -102,10 +108,16 @@ baseHeight=canvas.height-200
 
 /* ===== 入力 ===== */
 let goF=false,backF=false
+
 go.onmousedown=()=>goF=true
 go.onmouseup=()=>goF=false
+go.ontouchstart=()=>goF=true
+go.ontouchend=()=>goF=false
+
 back.onmousedown=()=>backF=true
 back.onmouseup=()=>backF=false
+back.ontouchstart=()=>backF=true
+back.ontouchend=()=>backF=false
 
 jump.onclick=()=>{
 if(state==="PLAY"&&jumpCount<2){
@@ -142,7 +154,6 @@ if(backF)speed-=0.05
 speed*=0.98
 worldX+=speed*5
 
-/* 坂道（sin波） */
 let slope=Math.sin(worldX*0.01)*50
 let ground=baseHeight+slope
 
@@ -155,7 +166,7 @@ jumpV=0
 jumpCount=0
 }
 
-/* 幽霊 */
+/* 敵 */
 if(Math.random()<0.02){
 ghosts.push({x:worldX+canvas.width+200})
 }
@@ -197,18 +208,15 @@ beams=beams.filter(b=>b.life>0)
 /* ===== 描画 ===== */
 function draw(){
 
-/* ハロウィン空 */
 let grad=ctx.createLinearGradient(0,0,0,canvas.height)
 grad.addColorStop(0,"#1a0033")
 grad.addColorStop(1,"#ff6600")
 ctx.fillStyle=grad
 ctx.fillRect(0,0,canvas.width,canvas.height)
 
-/* 地面ライン（坂） */
+/* 地面 */
 ctx.strokeStyle="#654321"
-ctx.lineWidth=4
 ctx.beginPath()
-
 for(let x=0;x<canvas.width;x+=10){
 let wx=worldX+x
 let y=baseHeight+Math.sin(wx*0.01)*50
@@ -216,35 +224,20 @@ ctx.lineTo(x,y)
 }
 ctx.stroke()
 
-/* トンネル */
-ctx.fillStyle="#111"
-ctx.fillRect(300,baseHeight-100,150,100)
-
-/* 鉄橋 */
-ctx.strokeStyle="gray"
-ctx.beginPath()
-ctx.moveTo(600,baseHeight)
-ctx.lineTo(700,baseHeight-100)
-ctx.stroke()
-
-/* 幽霊 */
+/* 敵 */
 ghosts.forEach(g=>{
-let x=g.x-worldX
-let y=baseHeight-20
 ctx.fillStyle="white"
 ctx.beginPath()
-ctx.arc(x,y,15,0,Math.PI*2)
+ctx.arc(g.x-worldX,baseHeight-20,15,0,Math.PI*2)
 ctx.fill()
 })
 
-/* 電車（坂に沿う） */
+/* 電車 */
 let trainX=200
 let trainYPos=baseHeight+Math.sin((worldX+trainX)*0.01)*50+trainY
 
 ctx.fillStyle="#222"
 ctx.fillRect(trainX,trainYPos-20,60,20)
-ctx.fillStyle="red"
-ctx.fillRect(trainX+60,trainYPos-30,30,30)
 
 /* ビーム */
 ctx.strokeStyle="cyan"
@@ -262,17 +255,15 @@ ctx.fillStyle="orange"
 ctx.fillRect(p.x-worldX,p.y,4,4)
 })
 
-/* UI */
 scoreEl.innerText=score
 
-/* タイトル */
+/* 文字 */
 if(state==="TITLE"){
 ctx.fillStyle="orange"
 ctx.font="40px sans-serif"
 ctx.fillText("HALLOWEEN TRAIN",40,200)
 }
 
-/* GAMEOVER */
 if(state==="GAMEOVER"){
 ctx.fillStyle="red"
 ctx.font="40px sans-serif"
@@ -282,10 +273,7 @@ ctx.fillText("GAME OVER",40,200)
 
 /* タップ */
 canvas.onclick=()=>{
-if(state==="TITLE"){
-init()
-state="PLAY"
-}else if(state==="GAMEOVER"){
+if(state==="TITLE"||state==="GAMEOVER"){
 init()
 state="PLAY"
 }
@@ -298,6 +286,7 @@ draw()
 requestAnimationFrame(loop)
 }
 loop()
+
 </script>
 
 </body>
