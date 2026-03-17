@@ -3,34 +3,26 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <style>
-body{margin:0;overflow:hidden;background:black;font-family:sans-serif}
+body{margin:0;overflow:hidden;background:black}
 canvas{display:block}
-
-#ui{
-position:absolute;
-top:env(safe-area-inset-top,10px);
-left:10px;
-color:white;
-z-index:10;
-}
 
 #controls{
 position:absolute;
-bottom:env(safe-area-inset-bottom,10px);
+bottom:10px;
 width:100%;
 display:flex;
-gap:6px;
+gap:5px;
 padding:10px;
 box-sizing:border-box;
-z-index:10;
 }
 
 button{
 flex:1;
+padding:14px;
+font-size:16px;
 border:none;
-border-radius:12px;
+border-radius:10px;
 color:white;
-font-weight:bold;
 }
 
 #go{background:#4CAF50}
@@ -44,67 +36,33 @@ font-weight:bold;
 
 <canvas id="game"></canvas>
 
-<div id="ui">
-SCORE:<span id="score">0</span>
-</div>
-
 <div id="controls">
 <button id="back">←</button>
 <button id="go">→</button>
 <button id="jump">JUMP</button>
-<button id="beam">BEAM</button>
+<button id="beam">WAVE</button>
 </div>
 
 <script>
-
-/* ===== 要素取得（これが超重要） ===== */
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
-
-const scoreEl=document.getElementById("score")
-
-const go=document.getElementById("go")
-const back=document.getElementById("back")
-const jump=document.getElementById("jump")
-const beam=document.getElementById("beam")
-
-/* ===== 画面 ===== */
-let isPortrait=true
 
 function resize(){
 canvas.width=innerWidth
 canvas.height=innerHeight
-isPortrait=innerHeight>innerWidth
-adjustUI()
 }
 window.onresize=resize
 resize()
 
-function adjustUI(){
-const controls=document.getElementById("controls")
-controls.style.flexDirection=isPortrait?"column":"row"
-}
-
 /* ===== 状態 ===== */
-let state="TITLE"
 let worldX=0,speed=0
 let trainY=0,jumpV=0,jumpCount=0
 let ghosts=[],beams=[],particles=[]
-let score=0
-let baseHeight
+let baseHeight=canvas.height-200
 
-function init(){
-worldX=0
-speed=0
-trainY=0
-jumpV=0
-jumpCount=0
-ghosts=[]
-beams=[]
-particles=[]
-score=0
-baseHeight=canvas.height-200
-}
+/* ===== エフェクト ===== */
+let shake=0
+let flash=0
 
 /* ===== 入力 ===== */
 let goF=false,backF=false
@@ -120,75 +78,125 @@ back.ontouchstart=()=>backF=true
 back.ontouchend=()=>backF=false
 
 jump.onclick=()=>{
-if(state==="PLAY"&&jumpCount<2){
+if(jumpCount<2){
 jumpV=-12
 jumpCount++
 }
 }
 
+/* ===== 波動砲発射 ===== */
 beam.onclick=()=>{
-if(state==="PLAY"){
-beams.push({x:worldX+200,life:15})
-}
+beams.push({
+x:worldX+200,
+life:40,
+phase:"charge"
+})
+shake=15
+flash=0.6
 }
 
 /* ===== 爆発 ===== */
 function explode(x,y){
-for(let i=0;i<30;i++){
+for(let i=0;i<50;i++){
 particles.push({
 x,y,
-vx:(Math.random()-0.5)*8,
-vy:(Math.random()-0.5)*8,
-life:30
+vx:(Math.random()-0.5)*10,
+vy:(Math.random()-0.5)*10,
+life:40
 })
 }
 }
 
+/* ===== 蒸気機関車 ===== */
+function drawTrain(x,y){
+
+let dir=speed>=0?1:-1
+
+ctx.save()
+
+let angle=Math.atan2(
+Math.sin((worldX+x+1)*0.01)*50 - Math.sin((worldX+x)*0.01)*50,
+1
+)
+
+ctx.translate(x,y)
+ctx.rotate(angle)
+ctx.scale(dir,1)
+
+ctx.fillStyle="#222"
+ctx.beginPath()
+ctx.arc(0,-25,25,0,Math.PI*2)
+ctx.fill()
+
+ctx.fillRect(-30,-25,80,30)
+
+ctx.fillStyle="#333"
+ctx.fillRect(30,-45,30,30)
+
+ctx.fillStyle="yellow"
+ctx.beginPath()
+ctx.arc(-25,-25,6,0,Math.PI*2)
+ctx.fill()
+
+ctx.fillStyle="#111"
+ctx.fillRect(-10,-55,10,20)
+
+/* 煙 */
+particles.push({
+x:x-dir*10,
+y:y-60,
+vx:(Math.random()-0.5)*2,
+vy:-2,
+life:40,
+smoke:true
+})
+
+/* 車輪 */
+[-20,10,40].forEach(w=>{
+ctx.beginPath()
+ctx.fillStyle="black"
+ctx.arc(w,0,10,0,Math.PI*2)
+ctx.fill()
+})
+
+ctx.restore()
+}
+
 /* ===== 更新 ===== */
 function update(){
-
-if(state!=="PLAY")return
 
 if(goF)speed+=0.05
 if(backF)speed-=0.05
 speed*=0.98
 worldX+=speed*5
 
-let slope=Math.sin(worldX*0.01)*50
-let ground=baseHeight+slope
-
 jumpV+=0.6
 trainY+=jumpV
-
-if(trainY>0){
-trainY=0
-jumpV=0
-jumpCount=0
-}
+if(trainY>0){trainY=0;jumpV=0;jumpCount=0}
 
 /* 敵 */
 if(Math.random()<0.02){
 ghosts.push({x:worldX+canvas.width+200})
 }
 
+/* ビーム処理 */
+beams.forEach(b=>{
+b.life--
+
+if(b.phase==="charge" && b.life<25){
+b.phase="fire"
+}
+
+if(b.phase==="fire"){
 ghosts.forEach(g=>{
-g.x-=2
-if(Math.abs((g.x-worldX)-200)<30 && trainY===0){
-explode(g.x,ground)
+if(Math.abs((g.x-worldX)-(b.x-worldX+400))<50){
+explode(g.x,baseHeight)
+g.hit=true
+}
+})
 }
 })
 
-/* ビーム */
-beams.forEach(b=>{
-let bx=b.x-worldX+400
-ghosts.forEach(g=>{
-if(Math.abs((g.x-worldX)-bx)<40){
-g.hit=true
-score+=10
-explode(g.x,baseHeight)
-}
-})
-})
 ghosts=ghosts.filter(g=>!g.hit)
 
 /* パーティクル */
@@ -200,14 +208,21 @@ p.life--
 })
 particles=particles.filter(p=>p.life>0)
 
-beams.forEach(b=>b.life--)
-beams=beams.filter(b=>b.life>0)
+/* エフェクト減衰 */
+shake*=0.9
+flash*=0.85
 
 }
 
 /* ===== 描画 ===== */
 function draw(){
 
+ctx.save()
+
+/* シェイク */
+ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake)
+
+/* 背景 */
 let grad=ctx.createLinearGradient(0,0,0,canvas.height)
 grad.addColorStop(0,"#1a0033")
 grad.addColorStop(1,"#ff6600")
@@ -235,47 +250,65 @@ ctx.fill()
 /* 電車 */
 let trainX=200
 let trainYPos=baseHeight+Math.sin((worldX+trainX)*0.01)*50+trainY
+drawTrain(trainX,trainYPos)
 
-ctx.fillStyle="#222"
-ctx.fillRect(trainX,trainYPos-20,60,20)
-
-/* ビーム */
-ctx.strokeStyle="cyan"
-ctx.lineWidth=20
+/* ===== 波動砲描画 ===== */
 beams.forEach(b=>{
+
+let startX=trainX
+let startY=trainYPos-20
+let endX=b.x-worldX+400
+
+if(b.phase==="charge"){
+/* チャージ球 */
+ctx.fillStyle="cyan"
 ctx.beginPath()
-ctx.moveTo(trainX,trainYPos-20)
-ctx.lineTo(b.x-worldX+400,trainYPos-20)
+ctx.arc(startX,startY,20+Math.sin(b.life)*5,0,Math.PI*2)
+ctx.fill()
+}else{
+
+let width=60+Math.sin(b.life*0.3)*15
+
+/* オーラ */
+for(let i=0;i<4;i++){
+ctx.strokeStyle="rgba(0,255,255,"+(0.3-i*0.07)+")"
+ctx.lineWidth=width+i*20
+ctx.beginPath()
+ctx.moveTo(startX,startY)
+ctx.lineTo(endX,startY+Math.sin(worldX*0.2)*5)
 ctx.stroke()
+}
+
+/* コア */
+ctx.strokeStyle="white"
+ctx.lineWidth=width*0.3
+ctx.beginPath()
+ctx.moveTo(startX,startY)
+ctx.lineTo(endX,startY)
+ctx.stroke()
+
+}
 })
 
 /* パーティクル */
 particles.forEach(p=>{
+if(p.smoke){
+ctx.fillStyle="rgba(200,200,200,"+(p.life/40)+")"
+ctx.beginPath()
+ctx.arc(p.x-worldX,p.y,8,0,Math.PI*2)
+ctx.fill()
+}else{
 ctx.fillStyle="orange"
 ctx.fillRect(p.x-worldX,p.y,4,4)
+}
 })
 
-scoreEl.innerText=score
+ctx.restore()
 
-/* 文字 */
-if(state==="TITLE"){
-ctx.fillStyle="orange"
-ctx.font="40px sans-serif"
-ctx.fillText("HALLOWEEN TRAIN",40,200)
-}
-
-if(state==="GAMEOVER"){
-ctx.fillStyle="red"
-ctx.font="40px sans-serif"
-ctx.fillText("GAME OVER",40,200)
-}
-}
-
-/* タップ */
-canvas.onclick=()=>{
-if(state==="TITLE"||state==="GAMEOVER"){
-init()
-state="PLAY"
+/* フラッシュ */
+if(flash>0){
+ctx.fillStyle="rgba(255,255,255,"+flash+")"
+ctx.fillRect(0,0,canvas.width,canvas.height)
 }
 }
 
@@ -286,7 +319,6 @@ draw()
 requestAnimationFrame(loop)
 }
 loop()
-
 </script>
 
 </body>
