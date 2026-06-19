@@ -72,14 +72,15 @@ const btns={
 };
 
 function layoutBtns(){
-  const bh=Math.min(H*0.22,100);
-  const bw=Math.min(W*0.2,110);
-  const by=H-bh-12;
-  const gap=8;
-  btns.left  ={x:12,        y:by,w:bw,h:bh};
-  btns.right ={x:12+bw+gap, y:by,w:bw,h:bh};
-  btns.jump  ={x:W-bw*2-gap-12,y:by,w:bw,h:bh};
-  btns.attack={x:W-bw-12,   y:by,w:bw,h:bh};
+  const portrait=W<H;
+  const bh=portrait?Math.min(H*0.11,90):Math.min(H*0.22,100);
+  const bw=portrait?Math.min(W*0.22,90):Math.min(W*0.2,110);
+  const by=H-bh-10;
+  const gap=6;
+  btns.left  ={x:10,        y:by,w:bw,h:bh};
+  btns.right ={x:10+bw+gap, y:by,w:bw,h:bh};
+  btns.jump  ={x:W-bw*2-gap-10,y:by,w:bw,h:bh};
+  btns.attack={x:W-bw-10,   y:by,w:bw,h:bh};
 }
 
 function inBtn(b,x,y){return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;}
@@ -776,15 +777,21 @@ function drawGameClearScreen(){
 }
 
 /* ===== LANDSCAPE HINT ===== */
+let orientBannerTimer=180;
 function drawOrientHint(){
-  if(W>H) return; // already landscape
-  cx.fillStyle='rgba(0,0,0,0.85)';cx.fillRect(0,0,W,H);
-  cx.fillStyle='#ffffff';
-  cx.font=`bold ${Math.round(W*0.06)}px sans-serif`;
+  if(W>H){orientBannerTimer=0;return;}
+  if(orientBannerTimer<=0) return;
+  orientBannerTimer--;
+  const alpha=Math.min(1,orientBannerTimer/30);
+  cx.save();
+  cx.globalAlpha=alpha;
+  cx.fillStyle='rgba(0,0,0,0.72)';
+  cx.fillRect(0,0,W,52);
+  cx.fillStyle='#ffff88';
+  cx.font=`bold ${Math.round(W*0.045)}px sans-serif`;
   cx.textAlign='center';
-  cx.fillText('📱 横向きでプレイ',W/2,H/2-20);
-  cx.font=`${Math.round(W*0.04)}px sans-serif`;
-  cx.fillText('スマホを横にしてください',W/2,H/2+30);
+  cx.fillText('横向きにするともっと遊びやすいよ！',W/2,34);
+  cx.restore();
 }
 
 /* ===== MAIN LOOP ===== */
